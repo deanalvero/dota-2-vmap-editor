@@ -1,0 +1,3197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dota 2 VMAP Editor</title>
+  <style>
+    :root {
+      --bg: #0f1218;
+      --panel: #161b24;
+      --panel-2: #1c2330;
+      --border: #2a3345;
+      --text: #e8edf6;
+      --muted: #95a3bd;
+      --accent: #7cc4ff;
+      --accent-2: #89e6a7;
+      --danger: #ff8c8c;
+      --warn: #ffd580;
+      --shadow: 0 14px 50px rgba(0,0,0,.35);
+      --radius: 18px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #0f1218 0%, #0d1117 100%);
+      color: var(--text);
+      font-family: var(--sans);
+    }
+    header {
+      padding: 20px 22px 10px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10,13,19,.85);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(10px);
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 20px;
+      font-weight: 750;
+      letter-spacing: .2px;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+      max-width: 1100px;
+    }
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr auto auto;
+      gap: 10px;
+      margin-top: 14px;
+      align-items: center;
+    }
+    .toolbar > * { min-width: 0; }
+    input[type="text"], input[type="number"], textarea, select {
+      width: 100%;
+      background: #0f1420;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font: inherit;
+      outline: none;
+    }
+    input[type="file"] {
+      color: var(--muted);
+      width: 100%;
+      background: #0f1420;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 9px 12px;
+    }
+    textarea {
+      min-height: 120px;
+      font-family: var(--mono);
+      resize: vertical;
+    }
+    button {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, #202836 0%, #1a2130 100%);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-weight: 650;
+      cursor: pointer;
+      transition: transform .08s ease, border-color .15s ease, background .15s ease;
+      box-shadow: 0 10px 20px rgba(0,0,0,.16);
+      white-space: nowrap;
+    }
+    button:hover { border-color: #40506f; }
+    button:active { transform: translateY(1px); }
+    button.primary {
+      border-color: rgba(124,196,255,.35);
+      background: linear-gradient(180deg, rgba(124,196,255,.25) 0%, rgba(124,196,255,.14) 100%);
+    }
+    button.good {
+      border-color: rgba(137,230,167,.35);
+      background: linear-gradient(180deg, rgba(137,230,167,.22) 0%, rgba(137,230,167,.12) 100%);
+    }
+    button.danger {
+      border-color: rgba(255,140,140,.25);
+      background: linear-gradient(180deg, rgba(255,140,140,.18) 0%, rgba(255,140,140,.10) 100%);
+    }
+    main {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 14px;
+      padding: 14px 14px 18px;
+      min-height: calc(100vh - 140px);
+    }
+    .panel {
+      background: rgba(22,27,36,.92);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      min-height: 100%;
+    }
+    .panel-head {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,.02);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .panel-head h2 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 720;
+    }
+    .panel-body { padding: 14px 16px 16px; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .stat {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+    }
+    .stat .k { color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+    .stat .v { font-size: 16px; font-weight: 740; }
+    .status {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+    .list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 70vh;
+      overflow: auto;
+      padding-right: 2px;
+    }
+    .item {
+      border: 1px solid var(--border);
+      background: #111624;
+      border-radius: 14px;
+      padding: 10px 11px;
+      cursor: pointer;
+    }
+    .item:hover { border-color: #445776; }
+    .item.active {
+      border-color: rgba(124,196,255,.6);
+      box-shadow: 0 0 0 1px rgba(124,196,255,.15) inset;
+    }
+    .item .top {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(124,196,255,.12);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .badge.grid { background: rgba(137,230,167,.12); color: var(--accent-2); }
+    .item .name {
+      margin-top: 6px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.35;
+      word-break: break-all;
+    }
+    .item .meta {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .details {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+    .card {
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      border-radius: 16px;
+      padding: 14px;
+    }
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 14px;
+    }
+    .mono { font-family: var(--mono); }
+    .grid-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .grid-table th, .grid-table td {
+      border-bottom: 1px solid rgba(42,51,69,.75);
+      padding: 8px 8px;
+      vertical-align: top;
+      text-align: left;
+    }
+    .grid-table th {
+      color: var(--muted);
+      font-weight: 650;
+      font-size: 12px;
+      position: sticky;
+      top: 0;
+      background: var(--panel-2);
+      z-index: 1;
+    }
+    .grid-table td.code, .grid-table th.code {
+      font-family: var(--mono);
+      font-size: 12px;
+      max-width: 420px;
+      word-break: break-word;
+    }
+    .grid-scroll {
+      max-height: 560px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+    .row-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .small {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 10px;
+    }
+    .field-grid.three { grid-template-columns: repeat(3, minmax(0,1fr)); }
+    .field-grid.four { grid-template-columns: repeat(4, minmax(0,1fr)); }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .field label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 650;
+    }
+    details {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(255,255,255,.02);
+      overflow: hidden;
+    }
+    details summary {
+      cursor: pointer;
+      padding: 10px 12px;
+      list-style: none;
+      font-weight: 650;
+      color: var(--text);
+    }
+    details summary::-webkit-details-marker { display: none; }
+    details .inner {
+      padding: 0 12px 12px;
+    }
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      margin-left: 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .inline {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .warning {
+      color: var(--warn);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .error {
+      color: var(--danger);
+      white-space: pre-wrap;
+      font-family: var(--mono);
+      font-size: 12px;
+      background: rgba(255,140,140,.06);
+      border: 1px solid rgba(255,140,140,.16);
+      padding: 12px;
+      border-radius: 12px;
+    }
+    .footer-note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      margin-top: 10px;
+    }
+    .hidden { display: none !important; }
+
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(5, 8, 14, .78);
+      backdrop-filter: blur(10px);
+    }
+    .loading-overlay .loading-card {
+      width: min(92vw, 420px);
+      background: rgba(22,27,36,.96);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.5);
+      padding: 24px 22px;
+      text-align: center;
+    }
+    .spinner {
+      width: 62px;
+      height: 62px;
+      margin: 0 auto 14px;
+      border-radius: 50%;
+      border: 6px solid rgba(124,196,255,.16);
+      border-top-color: var(--accent);
+      border-right-color: rgba(124,196,255,.55);
+      animation: spin 1s linear infinite;
+      box-shadow: 0 0 0 1px rgba(124,196,255,.08) inset;
+    }
+    .spinner.subtle {
+      width: 26px;
+      height: 26px;
+      border-width: 4px;
+      margin: 0;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+
+    @media (max-width: 1100px) {
+      main { grid-template-columns: 1fr; }
+      .toolbar { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 640px) {
+      .stats, .field-grid, .field-grid.three, .field-grid.four { grid-template-columns: 1fr; }
+      .grid-scroll { max-height: 420px; }
+    }
+  </style>
+</head>
+<body>
+<div id="loadingOverlay" class="loading-overlay hidden" aria-live="polite" aria-busy="true">
+  <div class="loading-card">
+    <div class="spinner" aria-hidden="true"></div>
+    <div id="loadingTitle" style="font-weight:760;font-size:16px;margin-bottom:6px;">Loading VMAP…</div>
+    <div id="loadingDetail" class="small">Parsing in a background worker.</div>
+  </div>
+</div>
+<header>
+  <h1>Dota 2 VMAP Editor</h1>
+  <div class="sub">
+    Open a binary Source 2 <span class="mono">.vmap</span>, inspect the DMX element graph, edit the selected <span class="mono">CDmeDotaTileGrid</span> or any other element, and export a new <span class="mono">.vmap</span> from the browser.
+  </div>
+
+  <div class="toolbar">
+    <input id="fileInput" type="file" accept=".vmap,.dmx,.txt,.bin" />
+    <input id="searchInput" type="text" placeholder="Search by type, name, or attribute..." />
+    <select id="elementFilter">
+      <option value="all">All elements</option>
+      <option value="grid">Only CDmeDotaTileGrid</option>
+    </select>
+    <button id="loadBtn" class="primary">Load file</button>
+    <button id="downloadBtn" class="good" disabled>Download new .vmap</button>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <div class="panel-head">
+      <h2>File overview</h2>
+      <span id="fileLabel" class="badge">No file loaded</span>
+    </div>
+    <div class="panel-body">
+      <div class="stats">
+        <div class="stat"><div class="k">Encoding</div><div id="statEncoding" class="v">—</div></div>
+        <div class="stat"><div class="k">Format</div><div id="statFormat" class="v">—</div></div>
+        <div class="stat"><div class="k">Strings</div><div id="statStrings" class="v">—</div></div>
+        <div class="stat"><div class="k">Elements</div><div id="statElements" class="v">—</div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <h3>Selected tile grid</h3>
+        <div id="gridSummary" class="small">Load a file to inspect the grid.</div>
+      </div>
+
+      <div class="card">
+        <div class="inline" style="justify-content:space-between; margin-bottom:10px;">
+          <h3 style="margin:0;">Matching elements</h3>
+          <span id="matchCount" class="pill">0</span>
+        </div>
+        <div id="elementList" class="list"></div>
+      </div>
+
+      <div class="status" id="status">Choose a .vmap file to begin.</div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Inspector</h2>
+      <div class="row-actions">
+        <button id="undoBtn" disabled title="Undo (Ctrl+Z)">↩ Undo</button>
+        <button id="redoBtn" disabled title="Redo (Ctrl+Y)">↪ Redo</button>
+        <button id="copyJsonBtn" disabled>Copy JSON</button>
+        <button id="refreshBtn" disabled>Refresh</button>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div id="details" class="details">
+        <div class="card">
+          <h3>Nothing selected</h3>
+          <div class="small">After loading, select an element from the left panel.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  "use strict";
+
+  const TYPE_NAMES = {
+    1: "Element",
+    2: "Int",
+    3: "Float",
+    4: "Bool",
+    5: "String",
+    6: "Binary",
+    7: "Time",
+    8: "Color",
+    9: "Vector2",
+    10: "Vector3",
+    11: "Vector4",
+    12: "Qangle",
+    13: "Quaternion",
+    14: "Vmatrix",
+    15: "Uint64",
+    16: "Uint8",
+    33: "ElementArray",
+    34: "IntArray",
+    35: "FloatArray",
+    36: "BoolArray",
+    37: "StringArray",
+    38: "BinaryArray",
+    39: "TimeArray",
+    40: "ColorArray",
+    41: "Vector2Array",
+    42: "Vector3Array",
+    43: "Vector4Array",
+    44: "QangleArray",
+    45: "QuaternionArray",
+    46: "VmatrixArray",
+    47: "Uint64Array",
+    48: "Uint8Array"
+  };
+
+  const KINDS = Object.values(TYPE_NAMES);
+
+  const els = {
+    fileInput: document.getElementById("fileInput"),
+    searchInput: document.getElementById("searchInput"),
+    elementFilter: document.getElementById("elementFilter"),
+    loadBtn: document.getElementById("loadBtn"),
+    downloadBtn: document.getElementById("downloadBtn"),
+    copyJsonBtn: document.getElementById("copyJsonBtn"),
+    refreshBtn: document.getElementById("refreshBtn"),
+    undoBtn: document.getElementById("undoBtn"),
+    redoBtn: document.getElementById("redoBtn"),
+    fileLabel: document.getElementById("fileLabel"),
+    statEncoding: document.getElementById("statEncoding"),
+    statFormat: document.getElementById("statFormat"),
+    statStrings: document.getElementById("statStrings"),
+    statElements: document.getElementById("statElements"),
+    gridSummary: document.getElementById("gridSummary"),
+    matchCount: document.getElementById("matchCount"),
+    elementList: document.getElementById("elementList"),
+    details: document.getElementById("details"),
+    status: document.getElementById("status")
+  };
+
+  const state = {
+    file: null,
+    selectedIndex: -1,
+    search: "",
+    filter: "all",
+    fileName: "edited.vmap",
+    loading: false,
+    loadWorker: null,
+    loadToken: 0,
+    treeCanvasOpen: false,
+    treeCanvasBuildId: 0,
+    treeCanvasBuilding: false,
+    jsonViewLoaded: false
+  };
+
+  const history = { past: [], future: [], maxDepth: 50 };
+
+  function snapshotBodies() {
+    return state.file.bodies.map((body) => ({
+      attrCount: body.attrCount,
+      attrs: body.attrs.map((attr) => ({
+        nameRef: attr.nameRef,
+        name: attr.name,
+        value: deepCloneValue(attr.value)
+      }))
+    }));
+  }
+
+  function deepCloneValue(v) {
+    if (!v) return v;
+    if (v.value instanceof Uint8Array) return { ...v, value: v.value.slice() };
+    if (Array.isArray(v.value)) {
+      return { ...v, value: v.value.map((item) => {
+        if (item instanceof Uint8Array) return item.slice();
+        if (typeof item === "object" && item !== null && !Array.isArray(item)) return { ...item };
+        return item;
+      })};
+    }
+    if (typeof v.value === "object" && v.value !== null) return { ...v, value: { ...v.value } };
+    return { ...v };
+  }
+
+  function commit(description, mutate) {
+    if (!state.file) return;
+    const before = snapshotBodies();
+    mutate();
+    const after = snapshotBodies();
+    history.past.push({ description, before, after });
+    if (history.past.length > history.maxDepth) history.past.shift();
+    history.future = [];
+    updateUndoRedoButtons();
+    updateStatus(`${description} — Ctrl+Z to undo`);
+  }
+
+  function undo() {
+    if (!state.file || !history.past.length) return;
+    const entry = history.past.pop();
+    history.future.push(entry);
+    state.file.bodies = entry.before.map((b) => ({ ...b, attrs: b.attrs }));
+    updateUndoRedoButtons();
+    updateOverview();
+    renderDetails();
+    updateStatus(`Undone: ${entry.description}`);
+  }
+
+  function redo() {
+    if (!state.file || !history.future.length) return;
+    const entry = history.future.pop();
+    history.past.push(entry);
+    state.file.bodies = entry.after.map((b) => ({ ...b, attrs: b.attrs }));
+    updateUndoRedoButtons();
+    updateOverview();
+    renderDetails();
+    updateStatus(`Redone: ${entry.description}`);
+  }
+
+  function updateUndoRedoButtons() {
+    els.undoBtn.disabled = !history.past.length;
+    els.redoBtn.disabled = !history.future.length;
+    els.undoBtn.title = history.past.length
+      ? `Undo: ${history.past[history.past.length - 1].description} (Ctrl+Z)`
+      : "Nothing to undo";
+    els.redoBtn.title = history.future.length
+      ? `Redo: ${history.future[history.future.length - 1].description} (Ctrl+Y)`
+      : "Nothing to redo";
+  }
+
+  function clearHistory() {
+    history.past = [];
+    history.future = [];
+    updateUndoRedoButtons();
+  }
+
+  function setLoadingUI(active, title = "Loading VMAP…", detail = "Parsing in a background worker.") {
+    state.loading = active;
+    els.loadBtn.disabled = active;
+    if (els.fileInput) els.fileInput.disabled = active;
+    const overlay = document.getElementById("loadingOverlay");
+    const titleEl = document.getElementById("loadingTitle");
+    const detailEl = document.getElementById("loadingDetail");
+    if (overlay) overlay.classList.toggle("hidden", !active);
+    if (titleEl) titleEl.textContent = title;
+    if (detailEl) detailEl.textContent = detail;
+    document.body.style.overflow = active ? "hidden" : "";
+  }
+
+  function terminateLoadWorker() {
+    if (state.loadWorker) {
+      try { state.loadWorker.terminate(); } catch (_) {}
+      state.loadWorker = null;
+    }
+  }
+
+  function buildParseWorkerSource() {
+    return [
+      'const TYPE_NAMES = ' + JSON.stringify({
+        1: 'Element',
+        2: 'Int',
+        3: 'Float',
+        4: 'Bool',
+        5: 'String',
+        6: 'Binary',
+        7: 'Time',
+        8: 'Color',
+        9: 'Vector2',
+        10: 'Vector3',
+        11: 'Vector4',
+        12: 'Qangle',
+        13: 'Quaternion',
+        14: 'Vmatrix',
+        15: 'Uint64',
+        16: 'Uint8',
+        33: 'ElementArray',
+        34: 'IntArray',
+        35: 'FloatArray',
+        36: 'BoolArray',
+        37: 'StringArray',
+        38: 'BinaryArray',
+        39: 'TimeArray',
+        40: 'ColorArray',
+        41: 'Vector2Array',
+        42: 'Vector3Array',
+        43: 'Vector4Array',
+        44: 'QangleArray',
+        45: 'QuaternionArray',
+        46: 'VmatrixArray',
+        47: 'Uint64Array',
+        48: 'Uint8Array'
+      }) + ';',
+      StringPool.toString(),
+      DmxReader.toString(),
+      typeName.toString(),
+      arrayBase.toString(),
+      readValue.toString(),
+      parseVmap.toString(),
+      'self.onmessage = (event) => {\n' +
+      '  const { id, bytes } = event.data || {};\n' +
+      '  try {\n' +
+      '    const parsed = parseVmap(bytes);\n' +
+      '    self.postMessage({\n' +
+      '      id,\n' +
+      '      ok: true,\n' +
+      '      file: {\n' +
+      '        header: parsed.header,\n' +
+      '        padding: parsed.padding,\n' +
+      '        prefix: parsed.prefix,\n' +
+      '        strings: parsed.strings,\n' +
+      '        elementCount: parsed.elementCount,\n' +
+      '        headers: parsed.headers,\n' +
+      '        bodies: parsed.bodies\n' +
+      '      }\n' +
+      '    });\n' +
+      '  } catch (err) {\n' +
+      '    self.postMessage({\n' +
+      '      id,\n' +
+      '      ok: false,\n' +
+      '      error: {\n' +
+      '        message: err && err.message ? err.message : String(err),\n' +
+      '        stack: err && err.stack ? err.stack : ""\n' +
+      '      }\n' +
+      '    });\n' +
+      '  }\n' +
+      '};'
+    ].join('\n\n');
+  }
+
+  function parseVmapInWorker(bytes, jobId) {
+    return new Promise((resolve, reject) => {
+      terminateLoadWorker();
+      const source = buildParseWorkerSource();
+      const workerBlob = new Blob([source], { type: 'text/javascript' });
+      const workerUrl = URL.createObjectURL(workerBlob);
+      const worker = new Worker(workerUrl);
+      URL.revokeObjectURL(workerUrl);
+      state.loadWorker = worker;
+
+      worker.onmessage = (event) => {
+        const data = event.data || {};
+        if (data.id !== jobId) return;
+        worker.terminate();
+        if (state.loadWorker === worker) state.loadWorker = null;
+        if (data.ok) {
+          resolve(data.file);
+        } else {
+          const error = new Error(data.error?.message || 'Failed to parse VMAP.');
+          error.stack = data.error?.stack || error.stack;
+          reject(error);
+        }
+      };
+
+      worker.onerror = (err) => {
+        worker.terminate();
+        if (state.loadWorker === worker) state.loadWorker = null;
+        reject(err.error || new Error(err.message || 'Worker failed.'));
+      };
+
+      worker.postMessage({ id: jobId, bytes }, [bytes]);
+    });
+  }
+
+
+  class DmxReader {
+
+    constructor(bytes) {
+      this.bytes = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+      this.view = new DataView(this.bytes.buffer, this.bytes.byteOffset, this.bytes.byteLength);
+      this.pos = 0;
+      this.decoder = new TextDecoder("utf-8", { fatal: false });
+    }
+    eof() {
+      return this.pos >= this.bytes.length;
+    }
+    readUint8() {
+      this._need(1);
+      return this.view.getUint8(this.pos++);
+    }
+    readInt8() {
+      this._need(1);
+      const v = this.view.getInt8(this.pos);
+      this.pos += 1;
+      return v;
+    }
+    readInt32() {
+      this._need(4);
+      const v = this.view.getInt32(this.pos, true);
+      this.pos += 4;
+      return v;
+    }
+    readUint32() {
+      this._need(4);
+      const v = this.view.getUint32(this.pos, true);
+      this.pos += 4;
+      return v;
+    }
+    readFloat32() {
+      this._need(4);
+      const v = this.view.getFloat32(this.pos, true);
+      this.pos += 4;
+      return v;
+    }
+    readBigUint64() {
+      this._need(8);
+      const v = this.view.getBigUint64(this.pos, true);
+      this.pos += 8;
+      return v;
+    }
+    readBytes(length) {
+      this._need(length);
+      const out = this.bytes.slice(this.pos, this.pos + length);
+      this.pos += length;
+      return out;
+    }
+    readCString() {
+      const start = this.pos;
+      while (this.pos < this.bytes.length && this.bytes[this.pos] !== 0) {
+        this.pos += 1;
+      }
+      if (this.pos >= this.bytes.length) {
+        throw new Error("Unexpected end of file while reading C string.");
+      }
+      const out = this.decoder.decode(this.bytes.slice(start, this.pos));
+      this.pos += 1;
+      return out;
+    }
+    _need(n) {
+      if (this.pos + n > this.bytes.length) {
+        throw new Error(`Unexpected end of file at offset ${this.pos} (need ${n} bytes).`);
+      }
+    }
+  }
+
+  class DmxWriter {
+    constructor() {
+      this.parts = [];
+      this.length = 0;
+      this._encoder = new TextEncoder();
+    }
+    _push(arr) {
+      const u8 = arr instanceof Uint8Array ? arr : new Uint8Array(arr);
+      this.parts.push(u8);
+      this.length += u8.length;
+    }
+    writeUint8(v) {
+      const b = new Uint8Array(1);
+      b[0] = v & 0xff;
+      this._push(b);
+    }
+    writeInt8(v) {
+      const b = new ArrayBuffer(1);
+      new DataView(b).setInt8(0, v);
+      this._push(new Uint8Array(b));
+    }
+    writeInt32(v) {
+      const b = new ArrayBuffer(4);
+      new DataView(b).setInt32(0, v, true);
+      this._push(new Uint8Array(b));
+    }
+    writeUint32(v) {
+      const b = new ArrayBuffer(4);
+      new DataView(b).setUint32(0, v >>> 0, true);
+      this._push(new Uint8Array(b));
+    }
+    writeFloat32(v) {
+      const b = new ArrayBuffer(4);
+      new DataView(b).setFloat32(0, Number(v), true);
+      this._push(new Uint8Array(b));
+    }
+    writeBigUint64(v) {
+      const b = new ArrayBuffer(8);
+      new DataView(b).setBigUint64(0, BigInt(v), true);
+      this._push(new Uint8Array(b));
+    }
+    writeBytes(bytes) {
+      this._push(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
+    }
+    writeCString(str) {
+      const encoded = this._encoder.encode(String(str));
+      this._push(encoded);
+      this.writeUint8(0);
+    }
+    concat() {
+      const out = new Uint8Array(this.length);
+      let offset = 0;
+      for (const part of this.parts) {
+        out.set(part, offset);
+        offset += part.length;
+      }
+      return out;
+    }
+  }
+
+  class StringPool {
+    constructor(strings) {
+      this.strings = strings.slice();
+      this.indexByValue = new Map();
+      for (let i = 0; i < this.strings.length; i += 1) {
+        if (!this.indexByValue.has(this.strings[i])) {
+          this.indexByValue.set(this.strings[i], i);
+        }
+      }
+    }
+    ensure(value, preferredIndex = null) {
+      const text = String(value);
+      if (preferredIndex !== null && preferredIndex !== undefined && preferredIndex >= 0 && preferredIndex < this.strings.length) {
+        if (this.strings[preferredIndex] === text) {
+          return preferredIndex;
+        }
+      }
+      if (this.indexByValue.has(text)) {
+        return this.indexByValue.get(text);
+      }
+      const idx = this.strings.length;
+      this.strings.push(text);
+      this.indexByValue.set(text, idx);
+      return idx;
+    }
+    get(index) {
+      return index >= 0 && index < this.strings.length ? this.strings[index] : `#${index}`;
+    }
+  }
+
+  function typeName(typeCode) {
+    return TYPE_NAMES[typeCode] || `Unknown(${typeCode})`;
+  }
+
+  function arrayBase(typeCode) {
+    if (typeCode === 48) return 16;
+    if (typeCode >= 33 && typeCode <= 47) return typeCode - 32;
+    return null;
+  }
+
+  function arrayTypeCode(base) {
+    if (base === 16) return 48;
+    return 32 + base;
+  }
+
+  function hexToBytes(hex) {
+    const clean = String(hex).replace(/[^0-9a-fA-F]/g, "");
+    if (clean.length % 2 !== 0) {
+      throw new Error("Hex data must contain an even number of digits.");
+    }
+    const out = new Uint8Array(clean.length / 2);
+    for (let i = 0; i < out.length; i += 1) {
+      out[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
+    }
+    return out;
+  }
+
+  function bytesToHex(bytes, max = Infinity) {
+    const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || []);
+    const len = Math.min(arr.length, max);
+    let out = "";
+    for (let i = 0; i < len; i += 1) {
+      out += arr[i].toString(16).padStart(2, "0");
+    }
+    if (arr.length > len) out += "…";
+    return out;
+  }
+
+  function resolveStringValue(value, pool) {
+    if (typeof value === "object" && value && typeof value.ref === "number") {
+      return pool.get(value.ref);
+    }
+    return value;
+  }
+
+  function readableValue(value, pool) {
+    if (!value) return "";
+    switch (value.kind) {
+      case "Element":
+        return `${value.value}`;
+      case "Int":
+      case "Float":
+      case "Bool":
+      case "Time":
+      case "Uint8":
+      case "Uint64":
+        return String(value.value);
+      case "String":
+        return value.value;
+      case "Binary":
+        return `Binary(${value.value.length} bytes) ${bytesToHex(value.value, 16)}`;
+      case "Color":
+        return `(${value.value.r}, ${value.value.g}, ${value.value.b}, ${value.value.a})`;
+      case "Vector2":
+        return `(${value.value.x}, ${value.value.y})`;
+      case "Vector3":
+        return `(${value.value.x}, ${value.value.y}, ${value.value.z})`;
+      case "Vector4":
+      case "Quaternion":
+        return `(${value.value.x}, ${value.value.y}, ${value.value.z}, ${value.value.w})`;
+      case "Qangle":
+        return `(${value.value.pitch}, ${value.value.yaw}, ${value.value.roll})`;
+      case "Vmatrix":
+        return `[${value.value.join(", ")}]`;
+      case "ElementArray":
+      case "IntArray":
+      case "FloatArray":
+      case "BoolArray":
+      case "Uint64Array":
+      case "Uint8Array":
+        return `Array(${value.value.length})`;
+      case "StringArray":
+        return `StringArray(${value.value.length})`;
+      case "BinaryArray":
+        return `BinaryArray(${value.value.length})`;
+      case "TimeArray":
+      case "ColorArray":
+      case "Vector2Array":
+      case "Vector3Array":
+      case "Vector4Array":
+      case "QangleArray":
+      case "QuaternionArray":
+      case "VmatrixArray":
+        return `${value.kind}(${value.value.length})`;
+      default:
+        return JSON.stringify(value);
+    }
+  }
+
+  function readValue(reader, stringMode, strings) {
+    const typeCode = reader.readUint8();
+    const kind = typeName(typeCode);
+    const base = arrayBase(typeCode);
+
+    if (base !== null) {
+      const count = reader.readInt32();
+      const arr = [];
+      for (let i = 0; i < count; i += 1) {
+        switch (base) {
+          case 1: arr.push(reader.readInt32()); break;
+          case 2: arr.push(reader.readInt32()); break;
+          case 3: arr.push(reader.readFloat32()); break;
+          case 4: arr.push(reader.readUint8() !== 0); break;
+          case 5: arr.push(reader.readCString()); break;
+          case 6: {
+            const n = reader.readInt32();
+            arr.push(reader.readBytes(n));
+            break;
+          }
+          case 7: arr.push(reader.readInt32()); break;
+          case 8: arr.push({
+            r: reader.readUint8(), g: reader.readUint8(), b: reader.readUint8(), a: reader.readUint8()
+          }); break;
+          case 9: arr.push({ x: reader.readFloat32(), y: reader.readFloat32() }); break;
+          case 10: arr.push({ x: reader.readFloat32(), y: reader.readFloat32(), z: reader.readFloat32() }); break;
+          case 11: arr.push({ x: reader.readFloat32(), y: reader.readFloat32(), z: reader.readFloat32(), w: reader.readFloat32() }); break;
+          case 12: arr.push({ pitch: reader.readFloat32(), yaw: reader.readFloat32(), roll: reader.readFloat32() }); break;
+          case 13: arr.push({ x: reader.readFloat32(), y: reader.readFloat32(), z: reader.readFloat32(), w: reader.readFloat32() }); break;
+          case 14: {
+            const mat = [];
+            for (let j = 0; j < 16; j += 1) mat.push(reader.readFloat32());
+            arr.push(mat);
+            break;
+          }
+          case 15: arr.push(reader.readBigUint64()); break;
+          case 16: arr.push(reader.readUint8()); break;
+          default:
+            throw new Error(`Unsupported array base type ${base} at offset ${reader.pos}`);
+        }
+      }
+      return { kind, value: arr, typeCode };
+    }
+
+    switch (typeCode) {
+      case 1:
+        return { kind, value: reader.readInt32(), typeCode };
+      case 2:
+        return { kind, value: reader.readInt32(), typeCode };
+      case 3:
+        return { kind, value: reader.readFloat32(), typeCode };
+      case 4:
+        return { kind, value: reader.readUint8() !== 0, typeCode };
+      case 5:
+        if (stringMode === "ref") {
+          const ref = reader.readInt32();
+          return { kind, ref, value: strings.get(ref), typeCode };
+        }
+        return { kind, value: reader.readCString(), typeCode };
+      case 6: {
+        const size = reader.readInt32();
+        return { kind, value: reader.readBytes(size), typeCode };
+      }
+      case 7:
+        return { kind, value: reader.readInt32(), typeCode };
+      case 8:
+        return { kind, value: {
+          r: reader.readUint8(), g: reader.readUint8(), b: reader.readUint8(), a: reader.readUint8()
+        }, typeCode };
+      case 9:
+        return { kind, value: { x: reader.readFloat32(), y: reader.readFloat32() }, typeCode };
+      case 10:
+        return { kind, value: { x: reader.readFloat32(), y: reader.readFloat32(), z: reader.readFloat32() }, typeCode };
+      case 11:
+        return { kind, value: { x: reader.readFloat32(), y: reader.readFloat32(), z: reader.readFloat32(), w: reader.readFloat32() }, typeCode };
+      case 12:
+        return { kind, value: { pitch: reader.readFloat32(), yaw: reader.readFloat32(), roll: reader.readFloat32() }, typeCode };
+      case 13:
+        return { kind, value: { x: reader.readFloat32(), y: reader.readFloat32(), z: reader.readFloat32(), w: reader.readFloat32() }, typeCode };
+      case 14: {
+        const mat = [];
+        for (let i = 0; i < 16; i += 1) mat.push(reader.readFloat32());
+        return { kind, value: mat, typeCode };
+      }
+      case 15:
+        return { kind, value: reader.readBigUint64(), typeCode };
+      case 16:
+        return { kind, value: reader.readUint8(), typeCode };
+      default:
+        throw new Error(`Unsupported attribute type ${typeCode} at offset ${reader.pos}`);
+    }
+  }
+
+  function writeValue(writer, attr, pool, stringMode) {
+    const code = attr.typeCode;
+    const base = arrayBase(code);
+
+    writer.writeUint8(code);
+
+    if (base !== null) {
+      const arr = attr.value || [];
+      writer.writeInt32(arr.length);
+      for (const item of arr) {
+        switch (base) {
+          case 1:
+          case 2:
+            writer.writeInt32(Number(item)); break;
+          case 3:
+            writer.writeFloat32(Number(item)); break;
+          case 4:
+            writer.writeUint8(item ? 1 : 0); break;
+          case 5:
+            writer.writeCString(String(item)); break;
+          case 6: {
+            const bytes = item instanceof Uint8Array ? item : new Uint8Array(item || []);
+            writer.writeInt32(bytes.length);
+            writer.writeBytes(bytes);
+            break;
+          }
+          case 7:
+            writer.writeInt32(Number(item)); break;
+          case 8:
+            writer.writeUint8(Number(item.r || 0) & 0xFF);
+            writer.writeUint8(Number(item.g || 0) & 0xFF);
+            writer.writeUint8(Number(item.b || 0) & 0xFF);
+            writer.writeUint8(Number(item.a || 0) & 0xFF);
+            break;
+          case 9:
+            writer.writeFloat32(Number(item.x || 0));
+            writer.writeFloat32(Number(item.y || 0));
+            break;
+          case 10:
+            writer.writeFloat32(Number(item.x || 0));
+            writer.writeFloat32(Number(item.y || 0));
+            writer.writeFloat32(Number(item.z || 0));
+            break;
+          case 11:
+            writer.writeFloat32(Number(item.x || 0));
+            writer.writeFloat32(Number(item.y || 0));
+            writer.writeFloat32(Number(item.z || 0));
+            writer.writeFloat32(Number(item.w || 0));
+            break;
+          case 12:
+            writer.writeFloat32(Number(item.pitch || 0));
+            writer.writeFloat32(Number(item.yaw || 0));
+            writer.writeFloat32(Number(item.roll || 0));
+            break;
+          case 13:
+            writer.writeFloat32(Number(item.x || 0));
+            writer.writeFloat32(Number(item.y || 0));
+            writer.writeFloat32(Number(item.z || 0));
+            writer.writeFloat32(Number(item.w || 0));
+            break;
+          case 14:
+            for (let i = 0; i < 16; i += 1) writer.writeFloat32(Number(item[i] || 0));
+            break;
+          case 15:
+            writer.writeBigUint64(item ?? 0n);
+            break;
+          case 16:
+            writer.writeUint8(Number(item) & 0xff);
+            break;
+          default:
+            throw new Error(`Unsupported array base type ${base}`);
+        }
+      }
+      return;
+    }
+
+    switch (code) {
+      case 1:
+      case 2:
+        writer.writeInt32(Number(attr.value || 0));
+        break;
+      case 3:
+        writer.writeFloat32(Number(attr.value || 0));
+        break;
+      case 4:
+        writer.writeUint8(attr.value ? 1 : 0);
+        break;
+      case 5:
+        if (stringMode === "ref") {
+          const ref = pool.ensure(attr.value, attr.ref);
+          writer.writeInt32(ref);
+        } else {
+          writer.writeCString(String(attr.value ?? ""));
+        }
+        break;
+      case 6: {
+        const bytes = attr.value instanceof Uint8Array ? attr.value : new Uint8Array(attr.value || []);
+        writer.writeInt32(bytes.length);
+        writer.writeBytes(bytes);
+        break;
+      }
+      case 7:
+        writer.writeInt32(Number(attr.value || 0));
+        break;
+      case 8: {
+        const c = attr.value || {};
+        writer.writeUint8(Number(c.r || 0) & 0xFF);
+        writer.writeUint8(Number(c.g || 0) & 0xFF);
+        writer.writeUint8(Number(c.b || 0) & 0xFF);
+        writer.writeUint8(Number(c.a || 0) & 0xFF);
+        break;
+      }
+      case 9: {
+        const v = attr.value || {};
+        writer.writeFloat32(Number(v.x || 0));
+        writer.writeFloat32(Number(v.y || 0));
+        break;
+      }
+      case 10: {
+        const v = attr.value || {};
+        writer.writeFloat32(Number(v.x || 0));
+        writer.writeFloat32(Number(v.y || 0));
+        writer.writeFloat32(Number(v.z || 0));
+        break;
+      }
+      case 11: {
+        const v = attr.value || {};
+        writer.writeFloat32(Number(v.x || 0));
+        writer.writeFloat32(Number(v.y || 0));
+        writer.writeFloat32(Number(v.z || 0));
+        writer.writeFloat32(Number(v.w || 0));
+        break;
+      }
+      case 12: {
+        const v = attr.value || {};
+        writer.writeFloat32(Number(v.pitch || 0));
+        writer.writeFloat32(Number(v.yaw || 0));
+        writer.writeFloat32(Number(v.roll || 0));
+        break;
+      }
+      case 13: {
+        const v = attr.value || {};
+        writer.writeFloat32(Number(v.x || 0));
+        writer.writeFloat32(Number(v.y || 0));
+        writer.writeFloat32(Number(v.z || 0));
+        writer.writeFloat32(Number(v.w || 0));
+        break;
+      }
+      case 14: {
+        const v = Array.isArray(attr.value) ? attr.value : [];
+        for (let i = 0; i < 16; i += 1) writer.writeFloat32(Number(v[i] || 0));
+        break;
+      }
+      case 15:
+        writer.writeBigUint64(attr.value ?? 0n);
+        break;
+      case 16:
+        writer.writeUint8(Number(attr.value || 0) & 0xff);
+        break;
+      default:
+        throw new Error(`Unsupported type code ${code}`);
+    }
+  }
+
+  function parseVmap(bytes) {
+    const reader = new DmxReader(bytes);
+    const headerRaw = reader.readCString();
+    const headerMatch = headerRaw.match(/^<!-- dmx encoding (\S+) (\d+) format (\S+) (\d+) -->\n$/);
+    if (!headerMatch) {
+      throw new Error("The file does not start with a valid DMX header.");
+    }
+    const header = {
+      raw: headerRaw,
+      encodingName: headerMatch[1],
+      encodingVersion: Number(headerMatch[2]),
+      formatName: headerMatch[3],
+      formatVersion: Number(headerMatch[4])
+    };
+    if (header.encodingName !== "binary" || header.encodingVersion !== 9) {
+      throw new Error(`Unsupported DMX encoding ${header.encodingName} ${header.encodingVersion}. This tool currently supports binary v9 VMAP files.`);
+    }
+
+    const padding = reader.readInt32();
+    const prefixCount = reader.readInt32();
+    const prefix = [];
+    for (let i = 0; i < prefixCount; i += 1) {
+      const name = reader.readCString();
+      const value = readValue(reader, "inline", null);
+      prefix.push({ name, value });
+    }
+
+    const stringCount = reader.readInt32();
+    const strings = [];
+    for (let i = 0; i < stringCount; i += 1) {
+      strings.push(reader.readCString());
+    }
+    const pool = new StringPool(strings);
+
+    const elementCount = reader.readInt32();
+    const headers = [];
+    for (let i = 0; i < elementCount; i += 1) {
+      const typeRef = reader.readInt32();
+      const nameRef = reader.readInt32();
+      const guid = Array.from(reader.readBytes(16));
+      headers.push({
+        typeRef,
+        nameRef,
+        type: pool.get(typeRef),
+        name: pool.get(nameRef),
+        guid
+      });
+    }
+
+    const bodies = [];
+    for (let i = 0; i < elementCount; i += 1) {
+      const attrCount = reader.readInt32();
+      const attrs = [];
+      for (let j = 0; j < attrCount; j += 1) {
+        const nameRef = reader.readInt32();
+        const value = readValue(reader, "ref", pool);
+        attrs.push({
+          nameRef,
+          name: pool.get(nameRef),
+          value
+        });
+      }
+      bodies.push({ attrCount, attrs });
+    }
+
+    if (!reader.eof()) {
+      console.warn(`Trailing data remains at offset ${reader.pos}/${reader.bytes.length}.`);
+    }
+
+    return {
+      header,
+      padding,
+      prefix,
+      strings,
+      pool,
+      elementCount,
+      headers,
+      bodies
+    };
+  }
+
+  function serializeVmap(file) {
+    const pool = new StringPool(file.strings.slice());
+
+    const writer = new DmxWriter();
+    writer.writeCString(file.header.raw);
+
+    writer.writeInt32(file.padding);
+    writer.writeInt32(file.prefix.length);
+    for (const pref of file.prefix) {
+      writer.writeCString(pref.name);
+      writeValue(writer, pref.value, pool, "inline");
+    }
+
+    const hdrRefs = file.headers.map((hdr) => ({
+      typeRef: pool.ensure(hdr.type, hdr.typeRef),
+      nameRef: pool.ensure(hdr.name, hdr.nameRef),
+      guid: hdr.guid
+    }));
+
+    const bodyData = file.bodies.map((body) => ({
+      attrs: body.attrs.map((attr) => ({
+        nameRef: pool.ensure(attr.name, attr.nameRef),
+        value: attr.value
+      }))
+    }));
+
+    writer.writeInt32(pool.strings.length);
+    for (const s of pool.strings) {
+      writer.writeCString(s);
+    }
+
+    writer.writeInt32(hdrRefs.length);
+    for (const h of hdrRefs) {
+      writer.writeInt32(h.typeRef);
+      writer.writeInt32(h.nameRef);
+      writer.writeBytes(Uint8Array.from(h.guid));
+    }
+
+    for (const body of bodyData) {
+      writer.writeInt32(body.attrs.length);
+      for (const attr of body.attrs) {
+        writer.writeInt32(attr.nameRef);
+        writeValue(writer, attr.value, pool, "ref");
+      }
+    }
+
+    return writer.concat();
+  }
+
+  function elementLabel(file, index) {
+    const hdr = file.headers[index];
+    const name = hdr?.name ?? `#${index}`;
+    const type = hdr?.type ?? "?";
+    return `${index} · ${type} · ${name}`;
+  }
+
+  function getGridIndices(file) {
+    const out = [];
+    for (let i = 0; i < file.headers.length; i += 1) {
+      if (file.headers[i].type === "CDmeDotaTileGrid") out.push(i);
+    }
+    return out;
+  }
+
+  function findAttr(body, name) {
+    return body.attrs.find((a) => a.name === name);
+  }
+
+  function getCellCount(grid) {
+    const w = Number(findAttr(grid, "gridWidth")?.value?.value ?? 0);
+    const h = Number(findAttr(grid, "gridHeight")?.value?.value ?? 0);
+    return w * h;
+  }
+
+  function isCellArray(attr, cellCount) {
+    if (!attr || !attr.value) return false;
+    return Array.isArray(attr.value.value) && attr.value.value.length === cellCount;
+  }
+
+  function previewArray(value, maxItems = 10) {
+    const arr = value.value || [];
+    const shown = arr.slice(0, maxItems).map((item) => {
+      if (item instanceof Uint8Array) return `0x${bytesToHex(item)}`;
+      if (typeof item === "bigint") return item.toString();
+      if (typeof item === "object" && item && !Array.isArray(item)) return JSON.stringify(item);
+      return String(item);
+    });
+    return `[${shown.join(", ")}${arr.length > maxItems ? ", …" : ""}]`;
+  }
+
+  function formatScalar(value) {
+    if (value === null || value === undefined) return "";
+    if (typeof value === "bigint") return value.toString();
+    if (typeof value === "object") return JSON.stringify(value);
+    return String(value);
+  }
+
+  function attrToJsonFriendly(attr) {
+    const v = attr.value;
+    if (!v) return null;
+    if (v.kind === "Binary") return { kind: v.kind, bytes: v.value.length, hex: bytesToHex(v.value, 64) };
+    if (v.kind === "Vmatrix") return { kind: v.kind, value: v.value };
+    if (v.kind.endsWith("Array")) {
+      return { kind: v.kind, length: v.value.length, preview: v.value.slice(0, 12) };
+    }
+    if (v.kind === "Uint64") return { kind: v.kind, value: v.value.toString() };
+    return { kind: v.kind, value: v.value };
+  }
+
+  function selectedJson(file, index) {
+    const hdr = file.headers[index];
+    const body = file.bodies[index];
+    return {
+      index,
+      type: hdr.type,
+      name: hdr.name,
+      guid: hdr.guid.map((b) => b.toString(16).padStart(2, "0")).join(""),
+      attributes: body.attrs.map((a) => ({ name: a.name, nameRef: a.nameRef, value: attrToJsonFriendly(a) }))
+    };
+  }
+
+  function updateOverview() {
+    if (!state.file) {
+      els.fileLabel.textContent = "No file loaded";
+      els.statEncoding.textContent = "—";
+      els.statFormat.textContent = "—";
+      els.statStrings.textContent = "—";
+      els.statElements.textContent = "—";
+      els.gridSummary.innerHTML = 'Load a file to inspect the grid.';
+      els.matchCount.textContent = "0";
+      els.elementList.innerHTML = "";
+      els.downloadBtn.disabled = true;
+      els.copyJsonBtn.disabled = true;
+      els.refreshBtn.disabled = true;
+      return;
+    }
+
+    const file = state.file;
+    els.fileLabel.textContent = state.fileName;
+    els.statEncoding.textContent = `${file.header.encodingName} ${file.header.encodingVersion}`;
+    els.statFormat.textContent = `${file.header.formatName} ${file.header.formatVersion}`;
+    els.statStrings.textContent = String(file.strings.length);
+    els.statElements.textContent = String(file.headers.length);
+    els.downloadBtn.disabled = false;
+    els.copyJsonBtn.disabled = state.selectedIndex < 0;
+    els.refreshBtn.disabled = false;
+
+    const grids = getGridIndices(file);
+    const selectedIsGrid = grids.includes(state.selectedIndex);
+    if (grids.length) {
+      const idx = selectedIsGrid ? state.selectedIndex : grids[0];
+      const gridBody = file.bodies[idx];
+      const w = Number(findAttr(gridBody, "gridWidth")?.value?.value ?? 0);
+      const h = Number(findAttr(gridBody, "gridHeight")?.value?.value ?? 0);
+      const cellCount = w * h;
+      els.gridSummary.innerHTML = `
+        <div class="inline">
+          <span class="badge grid">CDmeDotaTileGrid</span>
+          <span class="small">Found ${grids.length} grid element(s)</span>
+        </div>
+        <div class="small" style="margin-top:8px;">
+          First grid: <span class="mono">${elementLabel(file, idx)}</span><br/>
+          Size: <span class="mono">${w} × ${h}</span> (${cellCount.toLocaleString()} cells)
+        </div>
+      `;
+    } else {
+      els.gridSummary.textContent = "No CDmeDotaTileGrid element was found in this file.";
+    }
+
+    const q = state.search.trim().toLowerCase();
+    const filter = state.filter;
+    const rows = [];
+    let matched = 0;
+    for (let i = 0; i < file.headers.length; i += 1) {
+      const hdr = file.headers[i];
+      const body = file.bodies[i];
+      const attrNames = body.attrs.map((a) => a.name).join(" ").toLowerCase();
+      const hay = `${hdr.type} ${hdr.name} ${attrNames}`.toLowerCase();
+      if (filter === "grid" && hdr.type !== "CDmeDotaTileGrid") continue;
+      if (q && !hay.includes(q)) continue;
+      matched += 1;
+      rows.push({ i, hdr, body });
+    }
+    els.matchCount.textContent = String(matched);
+    els.elementList.innerHTML = rows.map(({ i, hdr, body }) => {
+      const active = i === state.selectedIndex ? "active" : "";
+      const gridBadge = hdr.type === "CDmeDotaTileGrid" ? `<span class="badge grid">grid</span>` : `<span class="badge">${hdr.type}</span>`;
+      return `
+        <div class="item ${active}" data-index="${i}">
+          <div class="top">
+            ${gridBadge}
+            <span class="small">#${i}</span>
+          </div>
+          <div class="name">${escapeHtml(hdr.name)}</div>
+          <div class="meta">${body.attrs.length} attrs · ${escapeHtml(hdr.type)}</div>
+        </div>
+      `;
+    }).join("");
+
+    els.elementList.querySelectorAll(".item").forEach((item) => {
+      item.addEventListener("click", () => {
+        selectElement(Number(item.dataset.index));
+      });
+    });
+
+    if (state.selectedIndex < 0 || state.selectedIndex >= file.headers.length) {
+      const firstGrid = grids[0] ?? 0;
+      selectElement(firstGrid);
+    }
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
+  }
+
+  function selectElement(index) {
+    state.selectedIndex = index;
+    updateOverview();
+    renderDetails();
+  }
+
+  let _treeCanvasRedraw = null;
+
+  function saveDetailsState() {
+    const scroll = els.details.parentElement?.scrollTop ?? 0;
+    const openIds = new Set(
+      [...els.details.querySelectorAll("details[data-id]")]
+        .filter((d) => d.open)
+        .map((d) => d.dataset.id)
+    );
+    return { scroll, openIds };
+  }
+
+  function restoreDetailsState({ scroll, openIds }) {
+    els.details.querySelectorAll("details[data-id]").forEach((d) => {
+      if (openIds.has(d.dataset.id)) d.open = true;
+    });
+    if (els.details.parentElement) els.details.parentElement.scrollTop = scroll;
+  }
+
+  function renderDetails() {
+    const file = state.file;
+    if (!file) {
+      els.details.innerHTML = `
+        <div class="card">
+          <h3>Nothing selected</h3>
+          <div class="small">After loading, select an element from the left panel.</div>
+        </div>
+      `;
+      return;
+    }
+    const index = state.selectedIndex;
+    if (index < 0 || index >= file.headers.length) {
+      els.details.innerHTML = `
+        <div class="card">
+          <h3>Nothing selected</h3>
+          <div class="small">Choose an element from the left list.</div>
+        </div>
+      `;
+      return;
+    }
+
+    const saved = saveDetailsState();
+    state.treeCanvasCleanup?.();
+    state.treeCanvasCleanup = null;
+    _treeCanvasRedraw = null;
+    state.jsonViewLoaded = false;
+
+    const hdr = file.headers[index];
+    const body = file.bodies[index];
+    const isGrid = hdr.type === "CDmeDotaTileGrid";
+    const cellCount = isGrid ? getCellCount(body) : 0;
+
+    let html = `
+      <div class="card">
+        <div class="inline" style="justify-content:space-between;">
+          <div>
+            <h3 style="margin-bottom:4px;">${escapeHtml(hdr.type)}</h3>
+            <div class="small mono">${escapeHtml(hdr.name)}</div>
+          </div>
+          <div class="badge ${isGrid ? "grid" : ""}">#${index}</div>
+        </div>
+        <div class="small" style="margin-top:10px; word-break:break-all;">
+          <div><strong>GUID:</strong> <span class="mono">${hdr.guid.map((b) => b.toString(16).padStart(2, "0")).join("")}</span></div>
+          <div><strong>Attributes:</strong> ${body.attrs.length}</div>
+        </div>
+      </div>
+    `;
+
+    if (isGrid) {
+      html += renderGridTool(body, index, cellCount);
+    }
+
+    html += `
+      <div class="card">
+        <div class="inline" style="justify-content:space-between; margin-bottom:8px;">
+          <h3 style="margin:0;">Attributes</h3>
+          <span class="pill">${body.attrs.length}</span>
+        </div>
+        <div class="grid-scroll">
+          <table class="grid-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th class="code">Value</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="attrTbody">
+    `;
+
+    body.attrs.forEach((attr, attrIndex) => {
+      html += renderAttrRow(index, attrIndex, attr, cellCount, isGrid);
+    });
+
+    html += `
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:10px;">Add attribute</h3>
+        <div class="field-grid three">
+          <div class="field">
+            <label>Name</label>
+            <input id="newAttrName" type="text" placeholder="attributeName" />
+          </div>
+          <div class="field">
+            <label>Type</label>
+            <select id="newAttrType">
+              ${KINDS.map((k) => `<option value="${k}">${k}</option>`).join("")}
+            </select>
+          </div>
+          <div class="field">
+            <label>Value</label>
+            <input id="newAttrValue" type="text" placeholder="value" />
+          </div>
+        </div>
+        <div class="row-actions" style="margin-top:10px;">
+          <button id="addAttrBtn" class="primary">Add to selected element</button>
+        </div>
+        <div class="footer-note">
+          String values are stored inline in DMX bodies, while element and attribute names use the string table. Arrays accept JSON for editing.
+        </div>
+      </div>
+
+      <details id="jsonDetails" class="card">
+        <summary style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <span>JSON view <span class="pill">lazy</span></span>
+          <span class="small" style="color:var(--muted);font-weight:500;">Click to render</span>
+        </summary>
+        <div class="inner">
+          <div class="small" id="jsonViewHint" style="margin-bottom:10px;color:var(--muted);">The JSON snapshot is generated only when expanded.</div>
+          <pre id="jsonView" class="mono" style="margin:0; white-space:pre-wrap; word-break:break-word; font-size:12px;"></pre>
+        </div>
+      </details>
+    `;
+
+    els.details.innerHTML = html;
+    els.copyJsonBtn.disabled = false;
+
+    const jsonDetails = document.getElementById("jsonDetails");
+    const jsonView = document.getElementById("jsonView");
+    const jsonViewHint = document.getElementById("jsonViewHint");
+    const syncJsonView = () => {
+      if (!jsonDetails || !jsonView || !jsonDetails.open || state.jsonViewLoaded) return;
+      state.jsonViewLoaded = true;
+      jsonView.textContent = JSON.stringify(selectedJson(file, index), null, 2);
+      if (jsonViewHint) jsonViewHint.textContent = "Rendered on demand to keep large VMAPs responsive.";
+    };
+    jsonDetails?.addEventListener("toggle", syncJsonView);
+    syncJsonView();
+
+    document.getElementById("addAttrBtn").addEventListener("click", () => {
+      tryAddAttribute();
+    });
+
+    if (isGrid) {
+      bindGridTool(body, index, cellCount);
+      const treeDetails = document.getElementById("treeCanvasDetails");
+      if (treeDetails) {
+        const syncTreeCanvas = () => {
+          state.treeCanvasOpen = !!treeDetails.open;
+          state.treeCanvasCleanup?.();
+          state.treeCanvasCleanup = null;
+          if (treeDetails.open) {
+            state.treeCanvasCleanup = bindTreeCanvas(body, index, cellCount);
+          }
+        };
+        treeDetails.addEventListener("toggle", syncTreeCanvas);
+        syncTreeCanvas();
+      }
+    }
+
+    bindAttrEditors(index, body);
+    hydrateLazyArrayEditors(els.details);
+    restoreDetailsState(saved);
+    syncJsonView();
+    hydrateLazyArrayEditors(els.details);
+  }
+
+  function patchAttrRow(elementIndex, attrIndex, attr, cellCount, isGrid) {
+    const editorId = `attr-${elementIndex}-${attrIndex}`;
+    const row = document.querySelector(`[data-attr-row="${editorId}"]`);
+    if (!row) {
+      renderDetails();
+      return;
+    }
+
+    const tmp = document.createElement("tbody");
+    tmp.innerHTML = renderAttrRow(elementIndex, attrIndex, attr, cellCount, isGrid);
+    const newRow = tmp.firstElementChild;
+    row.replaceWith(newRow);
+
+    const file = state.file;
+    const body = file.bodies[elementIndex];
+    const saveBtn = newRow.querySelector(`[data-save="${editorId}"]`);
+    const deleteBtn = newRow.querySelector(`[data-delete="${editorId}"]`);
+    const editor = newRow.querySelector(`[data-editor="${editorId}"]`);
+
+    if (saveBtn && editor) {
+      saveBtn.addEventListener("click", () => {
+        try {
+          const updated = parseEditorValue(attr.value.kind, editor, attr.value);
+          commit(`Save ${attr.name}`, () => { attr.value = updated; });
+          patchAttrRow(elementIndex, attrIndex, attr, cellCount, isGrid);
+          updateOverview();
+        } catch (err) {
+          alert(err.message || String(err));
+        }
+      });
+    }
+    if (deleteBtn) {
+      deleteBtn.addEventListener("click", () => {
+        if (!confirm(`Delete attribute "${attr.name}"?`)) return;
+        commit(`Delete attr "${attr.name}"`, () => { body.attrs.splice(attrIndex, 1); });
+        renderDetails();
+        updateOverview();
+      });
+    }
+
+    refreshJsonViewIfOpen(elementIndex);
+  }
+
+  function renderGridTool(body, elementIndex, cellCount) {
+    const widthAttr = findAttr(body, "gridWidth");
+    const heightAttr = findAttr(body, "gridHeight");
+    const w = Number(widthAttr?.value?.value ?? 0);
+    const h = Number(heightAttr?.value?.value ?? 0);
+
+    const cellArrays = body.attrs
+      .filter((a) => Array.isArray(a.value?.value) && a.value.value.length === cellCount)
+      .map((a) => a.name)
+      .sort((a, b) => a.localeCompare(b));
+
+    const hasType = !!findAttr(body, "objectsTreeType")?.value?.value;
+    const hasSize = !!findAttr(body, "objectsTreeSize")?.value?.value;
+
+    return `
+      <div class="card">
+        <h3 style="margin-bottom:10px;">TileGrid helper</h3>
+        <div class="small" style="margin-bottom:10px;">
+          Cell-sized arrays detected: <span class="mono">${cellArrays.length}</span>. You can paint a tile by index here.
+        </div>
+        <div class="field-grid four">
+          <div class="field"><label>X</label><input id="gridX" type="number" min="0" max="${w > 0 ? w - 1 : 0}" value="0" /></div>
+          <div class="field"><label>Y</label><input id="gridY" type="number" min="0" max="${h > 0 ? h - 1 : 0}" value="0" /></div>
+          <div class="field">
+            <label>Field</label>
+            <select id="gridField">
+              ${cellArrays.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("")}
+            </select>
+          </div>
+          <div class="field"><label>Value</label><input id="gridValue" type="text" placeholder="e.g. 1 or pine_summer" /></div>
+        </div>
+        <div class="row-actions" style="margin-top:10px;">
+          <button id="applyGridCellBtn" class="good">Apply to tile</button>
+          <button id="previewGridCellBtn">Preview tile</button>
+        </div>
+        <div id="gridCellPreview" class="footer-note"></div>
+        <div class="warning" style="margin-top:8px;">
+          This tool edits the raw cell arrays in the grid. It does not guess the game-specific meaning of each numeric code.
+        </div>
+      </div>
+      ${renderTreeCanvasCard(w, h, hasType, hasSize)}
+    `;
+  }
+
+  function bindGridTool(body, elementIndex, cellCount) {
+    const xEl = document.getElementById("gridX");
+    const yEl = document.getElementById("gridY");
+    const fieldEl = document.getElementById("gridField");
+    const valueEl = document.getElementById("gridValue");
+    const previewEl = document.getElementById("gridCellPreview");
+
+    const updatePreview = () => {
+      const x = Number(xEl.value);
+      const y = Number(yEl.value);
+      const w = Number(findAttr(body, "gridWidth")?.value?.value ?? 0);
+      const h = Number(findAttr(body, "gridHeight")?.value?.value ?? 0);
+      if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x >= w || y >= h) {
+        previewEl.textContent = "Tile coordinates are outside the grid.";
+        return;
+      }
+      const idx = y * w + x;
+      const cellAttrs = body.attrs.filter((a) => Array.isArray(a.value?.value) && a.value.value.length === cellCount);
+      const names = ["objectsTreeType", "objectsTreeSize", "objectsVariationId", "objectsPitch", "objectsRotation", "cellsVariationId", "cellsTileSet"];
+      const present = names
+        .map((name) => {
+          const attr = cellAttrs.find((a) => a.name === name);
+          if (!attr) return null;
+          return `${name}=${formatScalar(attr.value.value[idx])}`;
+        })
+        .filter(Boolean);
+      previewEl.innerHTML = `
+        Tile <span class="mono">(${x}, ${y})</span> → index <span class="mono">${idx}</span><br/>
+        ${present.length ? present.map((s) => `<span class="mono">${escapeHtml(s)}</span>`).join("<br/>") : "No common cell fields were found."}
+      `;
+    };
+
+    document.getElementById("previewGridCellBtn").addEventListener("click", updatePreview);
+    document.getElementById("applyGridCellBtn").addEventListener("click", () => {
+      try {
+        const w = Number(findAttr(body, "gridWidth")?.value?.value ?? 0);
+        const h = Number(findAttr(body, "gridHeight")?.value?.value ?? 0);
+        const x = Number(xEl.value);
+        const y = Number(yEl.value);
+        if (!Number.isInteger(x) || !Number.isInteger(y)) throw new Error("X and Y must be integers.");
+        if (x < 0 || y < 0 || x >= w || y >= h) throw new Error("Tile coordinates are outside the grid.");
+        const idx = y * w + x;
+        const field = fieldEl.value;
+        const attr = body.attrs.find((a) => a.name === field);
+        if (!attr) throw new Error(`Field "${field}" not found in the selected grid.`);
+        if (!Array.isArray(attr.value?.value)) throw new Error(`Field "${field}" is not an array.`);
+        const current = attr.value.value[idx];
+        const parsed = parseCellInput(attr.value.kind, valueEl.value, current);
+        commit(`Set ${field}[${idx}] on grid`, () => { attr.value.value[idx] = parsed; });
+        _treeCanvasRedraw?.();
+        const attrIdx = body.attrs.indexOf(attr);
+        if (attrIdx >= 0) patchAttrRow(elementIndex, attrIdx, attr, cellCount, true);
+        updateOverview();
+      } catch (err) {
+        alert(err.message || String(err));
+      }
+    });
+    updatePreview();
+  }
+
+  function treeTypeColor(typeCode) {
+    if (!typeCode) return null;
+    const h = 88  + ((typeCode * 53 +  7) % 72);
+    const s = 50  + ((typeCode * 37 + 13) % 34);
+    const l = 26  + ((typeCode * 19 +  3) % 26);
+    return { h, s, l, css: `hsl(${h},${s}%,${l}%)` };
+  }
+
+  function hslToRgbArr(h, s, l) {
+    s /= 100; l /= 100;
+    const k = (n) => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
+  }
+
+  function inferTreeResolution(gridW, gridH, typeArr, sizeArr) {
+    const len = (Array.isArray(typeArr) && typeArr.length) || (Array.isArray(sizeArr) && sizeArr.length) || 0;
+    if (!len || gridW <= 0 || gridH <= 0) return null;
+
+    const a = gridW * gridH;
+    const b = gridW + gridH;
+    const c = 1 - len;
+    const disc = b * b - 4 * a * c;
+    if (disc >= 0) {
+      const root = (-b + Math.sqrt(disc)) / (2 * a);
+      const n = Math.round(root);
+      if (Number.isFinite(root) && Math.abs(root - n) < 1e-6 && n >= 1) {
+        const tw = gridW * n + 1;
+        const th = gridH * n + 1;
+        if (tw * th === len) return { tw, th, n, len };
+      }
+    }
+
+    const side = Math.round(Math.sqrt(len));
+    if (side * side === len) {
+      const nW = (side - 1) / gridW;
+      const nH = (side - 1) / gridH;
+      if (Math.abs(nW - Math.round(nW)) < 1e-6 && Math.abs(nH - Math.round(nH)) < 1e-6) {
+        const n = Math.round(nW);
+        if (n === Math.round(nH)) return { tw: side, th: side, n, len };
+      }
+      return { tw: side, th: side, n: Math.max(1, Math.round((side - 1) / Math.max(gridW, gridH))), len };
+    }
+
+    return null;
+  }
+
+
+  function treeVertexIndex(vx, vy, tw, th) {
+    return vy * tw + vx;
+  }
+
+  function treeVertexCoords(idx, tw, th) {
+    const vx = idx % tw;
+    const vy = Math.floor(idx / tw);
+    return { vx, vy };
+  }
+
+  function renderTreeCanvasCard(w, h, hasType, hasSize) {
+    if (!hasType && !hasSize) {
+      return `
+        <div class="card">
+          <h3 style="margin-bottom:8px;">Tree Canvas</h3>
+          <div class="footer-note">
+            Neither <span class="mono">objectsTreeType</span> nor
+            <span class="mono">objectsTreeSize</span> were found in this element.
+          </div>
+        </div>
+      `;
+    }
+
+    const warnings = [
+      !hasType ? `<span class="warning">objectsTreeType missing</span>` : "",
+      !hasSize ? `<span class="warning">objectsTreeSize missing</span>`  : ""
+    ].filter(Boolean).join(" · ");
+
+    const openAttr = state.treeCanvasOpen ? "open" : "";
+    const expandedHint = state.treeCanvasOpen
+      ? "Tree Canvas is expanded and ready."
+      : "Collapsed by default. Expand this panel to initialize the canvas and load the heavy view.";
+
+    return `
+      <details id="treeCanvasDetails" class="card" ${openAttr}>
+        <summary style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <span>Tree Canvas <span class="pill">${state.treeCanvasOpen ? "open" : "collapsed"}</span></span>
+          <span class="small" style="color:var(--muted);font-weight:500;">${state.treeCanvasOpen ? "Click to collapse" : "Click to load"}</span>
+        </summary>
+        <div class="inner" style="padding:12px;">
+          <div class="small" style="margin-bottom:10px;color:var(--muted);">${expandedHint}</div>
+
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+            <div>
+              <h3 style="margin:0 0 2px;">Tree Canvas</h3>
+              <div id="treeCanvasInfo" class="small">${w} × ${h} tiles · waiting to initialize…</div>
+            </div>
+            <div class="row-actions" style="flex-shrink:0;">
+              <button id="treeBtnFit"     class="primary" title="Fit grid to view">⊞ Fit</button>
+              <button id="treeBtnZoomIn"  title="Zoom in">＋</button>
+              <button id="treeBtnZoomOut" title="Zoom out">－</button>
+              <button id="treeBtnReset"   title="1 px per vertex">1:1</button>
+              <button id="treeBtnExport"  title="Export as PNG">↓ PNG</button>
+              <span   id="treeZoomLabel"  class="small" style="min-width:52px;text-align:right;align-self:center;"></span>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:14px;margin-bottom:10px;flex-wrap:wrap;">
+            <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;cursor:pointer;">
+              <input type="checkbox" id="treeLayerType" ${hasType ? "checked" : "disabled"} />
+              Type colors
+            </label>
+            <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;cursor:pointer;">
+              <input type="checkbox" id="treeLayerSize" ${hasSize ? "checked" : "disabled"} />
+              Size circles
+            </label>
+            <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;cursor:pointer;">
+              <input type="checkbox" id="treeLayerGrid" checked />
+              Vertex grid lines
+            </label>
+            <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;cursor:pointer;">
+              <input type="checkbox" id="treeLayerEmpty" />
+              Highlight empty
+            </label>
+          </div>
+
+          <div style="margin-bottom:10px;padding:12px;border:1px solid var(--border);border-radius:14px;background:rgba(255,255,255,.02);">
+            <div class="inline" style="justify-content:space-between;align-items:flex-end;gap:10px;">
+              <div>
+                <h3 style="margin:0 0 4px;">Vertex paint</h3>
+                <div class="small">Left click paints the vertex. Right click erases it. Alt-click jumps to the helper.</div>
+              </div>
+              <div class="small" style="color:var(--muted);text-align:right;">Middle-drag to pan · wheel to zoom</div>
+            </div>
+            <div class="field-grid three" style="margin-top:10px;">
+              <div class="field">
+                <label>Paint type</label>
+                <input id="treePaintType" type="number" min="0" step="1" value="1" />
+              </div>
+              <div class="field">
+                <label>Paint size</label>
+                <input id="treePaintSize" type="number" min="0" step="1" value="1" />
+              </div>
+              <div class="field">
+                <label>Notes</label>
+                <div class="small" style="padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#0f1420;line-height:1.4;">
+                  Writes directly into <span class="mono">objectsTreeType</span> and <span class="mono">objectsTreeSize</span>.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="position:relative;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#07080d;line-height:0;user-select:none;">
+            <canvas id="treeCanvas" style="display:block;width:100%;cursor:crosshair;touch-action:none;"></canvas>
+            <div id="treeTooltip" style="
+              position:absolute;pointer-events:none;display:none;
+              background:rgba(8,11,20,.94);border:1px solid var(--border);
+              border-radius:8px;padding:7px 11px;font-size:11.5px;line-height:1.6;
+              font-family:var(--mono);color:var(--text);white-space:nowrap;
+              box-shadow:0 6px 24px rgba(0,0,0,.55);z-index:10;
+            "></div>
+          </div>
+
+          ${hasType ? `<div id="treeLegend" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;"></div>` : ""}
+
+          ${warnings ? `<div style="margin-top:8px;">${warnings}</div>` : ""}
+        </div>
+      </details>
+    `;
+  }
+
+  function bindTreeCanvas(body, elementIndex, cellCount) {
+    const canvas = document.getElementById("treeCanvas");
+    if (!canvas) return null;
+
+    const gridW = Number(findAttr(body, "gridWidth")?.value?.value  ?? 0);
+    const gridH = Number(findAttr(body, "gridHeight")?.value?.value ?? 0);
+    if (gridW <= 0 || gridH <= 0) return;
+
+    const typeAttr = findAttr(body, "objectsTreeType");
+    const sizeAttr = findAttr(body, "objectsTreeSize");
+    const typeArr  = Array.isArray(typeAttr?.value?.value) ? typeAttr.value.value : null;
+    const sizeArr  = Array.isArray(sizeAttr?.value?.value) ? sizeAttr.value.value : null;
+
+    const treeRes = inferTreeResolution(gridW, gridH, typeArr, sizeArr);
+    const tw = treeRes?.tw ?? gridW;
+    const th = treeRes?.th ?? gridH;
+    const treeN = treeRes?.n ?? 1;
+    const vertexCount = tw * th;
+
+    const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
+
+    const cam = { panX: 0, panY: 0, zoom: 8 };
+
+    const colorCache = new Map();
+    function getColor(t) {
+      if (!colorCache.has(t)) colorCache.set(t, treeTypeColor(t));
+      return colorCache.get(t);
+    }
+
+    function updateTreeCanvasInfo(extra = "") {
+      const infoEl = document.getElementById("treeCanvasInfo");
+      if (!infoEl) return;
+      const base = treeRes
+        ? `${gridW} × ${gridH} tiles · ${tw} × ${th} vertices (N=${treeN})`
+        : `${gridW} × ${gridH} tiles · tree vertex resolution could not be inferred`;
+      infoEl.textContent = extra ? `${base} · ${extra}` : base;
+    }
+    updateTreeCanvasInfo();
+
+    function normalizeTreeVertexOrientationOnce() {
+      if (body.__treeVertexOrientationNormalized) return;
+      if (!treeRes) return;
+
+      const vertexCount = tw * th;
+      const flipArray = (arr) => {
+        if (!arr || typeof arr.length !== "number" || arr.length !== vertexCount) return;
+        for (let y = 0; y < Math.floor(th / 2); y++) {
+          const yOpp = th - 1 - y;
+          for (let x = 0; x < tw; x++) {
+            const a = y * tw + x;
+            const b = yOpp * tw + x;
+            const tmp = arr[a];
+            arr[a] = arr[b];
+            arr[b] = tmp;
+          }
+        }
+      };
+
+      flipArray(typeArr);
+      flipArray(sizeArr);
+      body.__treeVertexOrientationNormalized = true;
+    }
+
+    normalizeTreeVertexOrientationOnce();
+
+    const legendEl = document.getElementById("treeLegend");
+    if (legendEl && typeArr) {
+      const unique = [...new Set(typeArr)].filter((t) => t !== 0).sort((a, b) => a - b);
+      const MAX = 24;
+      legendEl.innerHTML =
+        `<span class="small" style="color:var(--muted);">Types:</span>` +
+        unique.slice(0, MAX).map((t) => {
+          const c = getColor(t);
+          return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-family:var(--mono);color:var(--muted);">
+            <span style="width:11px;height:11px;border-radius:3px;background:${c.css};flex-shrink:0;"></span>${t}
+          </span>`;
+        }).join("") +
+        (unique.length > MAX ? `<span class="small" style="color:var(--muted);">+${unique.length - MAX} more</span>` : "");
+    }
+
+    const layerTypeEl  = document.getElementById("treeLayerType");
+    const layerSizeEl  = document.getElementById("treeLayerSize");
+    const layerGridEl  = document.getElementById("treeLayerGrid");
+    const layerEmptyEl = document.getElementById("treeLayerEmpty");
+    const paintTypeEl  = document.getElementById("treePaintType");
+    const paintSizeEl  = document.getElementById("treePaintSize");
+
+    const showType  = () => layerTypeEl  && !layerTypeEl.disabled  && layerTypeEl.checked;
+    const showSize  = () => layerSizeEl  && !layerSizeEl.disabled  && layerSizeEl.checked;
+    const showGrid  = () => layerGridEl  && layerGridEl.checked;
+    const showEmpty = () => layerEmptyEl && layerEmptyEl.checked;
+
+    let offscreen = null;
+    let offscreenPending = null;
+    let offscreenBuildId = 0;
+    let offscreenBuilding = false;
+
+    function buildOffscreenChunked(buildId) {
+      const oc   = document.createElement("canvas");
+      oc.width   = tw;
+      oc.height  = th;
+      const octx = oc.getContext("2d");
+      const img  = octx.createImageData(tw, th);
+      const px   = img.data;
+      const doType  = showType();
+      const doEmpty = showEmpty();
+      const rowsPerChunk = Math.max(4, Math.floor(120000 / Math.max(1, tw)));
+      let vy = 0;
+
+      return new Promise((resolve, reject) => {
+        const step = () => {
+          if (buildId !== offscreenBuildId) return reject(new Error("Tree canvas build cancelled."));
+          try {
+            const endY = Math.min(th, vy + rowsPerChunk);
+            for (; vy < endY; vy++) {
+              for (let vx = 0; vx < tw; vx++) {
+                const idx  = treeVertexIndex(vx, vy, tw, th);
+                const base = idx * 4;
+                const t    = typeArr ? Number(typeArr[idx] ?? 0) : 0;
+
+                if (doType && t !== 0) {
+                  const c = getColor(t);
+                  const [r, g, b] = hslToRgbArr(c.h, c.s, c.l);
+                  px[base] = r; px[base+1] = g; px[base+2] = b; px[base+3] = 255;
+                } else if (doEmpty && t === 0) {
+                  px[base] = 30; px[base+1] = 38; px[base+2] = 55; px[base+3] = 255;
+                } else {
+                  px[base] = 9; px[base+1] = 11; px[base+2] = 17; px[base+3] = 255;
+                }
+              }
+            }
+
+            if (vy < th) {
+              updateTreeCanvasInfo(`building… ${Math.round((vy / th) * 100)}%`);
+              requestAnimationFrame(step);
+              return;
+            }
+
+            octx.putImageData(img, 0, 0);
+            resolve(oc);
+          } catch (err) {
+            reject(err);
+          }
+        };
+        requestAnimationFrame(step);
+      });
+    }
+
+    function scheduleOffscreenRebuild() {
+      const buildId = ++offscreenBuildId;
+      offscreenBuilding = true;
+      updateTreeCanvasInfo("building… 0%");
+      offscreenPending = buildOffscreenChunked(buildId)
+        .then((canvasBitmap) => {
+          if (buildId !== offscreenBuildId) return;
+          offscreen = canvasBitmap;
+          offscreenBuilding = false;
+          offscreenPending = null;
+          updateTreeCanvasInfo();
+          draw();
+        })
+        .catch((err) => {
+          if (buildId !== offscreenBuildId) return;
+          offscreenPending = null;
+          offscreenBuilding = false;
+          updateTreeCanvasInfo("build failed");
+          console.error(err);
+        });
+    }
+
+    function getPaintType() {
+      const v = Number(paintTypeEl?.value ?? 1);
+      return Number.isFinite(v) ? Math.max(0, Math.trunc(v)) : 1;
+    }
+
+    function getPaintSize() {
+      const v = Number(paintSizeEl?.value ?? 1);
+      return Number.isFinite(v) ? Math.max(0, Math.trunc(v)) : 1;
+    }
+
+    function paintVertexAt(vx, vy, mode = "paint") {
+      if (!typeArr && !sizeArr) return;
+      if (vx < 0 || vy < 0 || vx >= tw || vy >= th) return;
+
+      const idx = treeVertexIndex(vx, vy, tw, th);
+
+      commit(mode === "erase" ? `Erase tree vertex (${vx}, ${vy})` : `Paint tree vertex (${vx}, ${vy})`, () => {
+        if (typeArr) typeArr[idx] = mode === "erase" ? 0 : getPaintType();
+        if (sizeArr) sizeArr[idx] = mode === "erase" ? 0 : getPaintSize();
+      });
+
+      hoveredCell = { cx: vx, cy: vy };
+      scheduleOffscreenRebuild();
+      draw();
+
+      const typeIdx = body.attrs.indexOf(typeAttr);
+      const sizeIdx = body.attrs.indexOf(sizeAttr);
+      if (typeIdx >= 0) patchAttrRow(elementIndex, typeIdx, typeAttr, cellCount, true);
+      if (sizeIdx >= 0) patchAttrRow(elementIndex, sizeIdx, sizeAttr, cellCount, true);
+
+      refreshJsonViewIfOpen(elementIndex);
+    }
+
+    function fitToCanvas() {
+      const cssW = canvas.offsetWidth || 800;
+      const aspect = th / tw;
+      const cssH   = Math.min(Math.round(cssW * aspect), 540);
+      canvas.width  = Math.round(cssW * dpr);
+      canvas.height = Math.round(cssH * dpr);
+      canvas.style.height = cssH + "px";
+      const zx = cssW / tw;
+      const zy = cssH / th;
+      cam.zoom = Math.min(zx, zy);
+      cam.panX = (cssW - cam.zoom * tw) / 2;
+      cam.panY = (cssH - cam.zoom * th) / 2;
+    }
+
+    function clampPan() {
+      const cssW    = canvas.width / dpr;
+      const cssH    = canvas.height / dpr;
+      const marginX = cssW * 0.5;
+      const marginY = cssH * 0.5;
+      cam.panX = Math.min(marginX, Math.max(cssW - cam.zoom * tw - marginX, cam.panX));
+      cam.panY = Math.min(marginY, Math.max(cssH - cam.zoom * th - marginY, cam.panY));
+    }
+
+    function draw() {
+      const cssW = canvas.width  / dpr;
+      const cssH = canvas.height / dpr;
+
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, cssW, cssH);
+
+      ctx.fillStyle = "#07080d";
+      ctx.fillRect(0, 0, cssW, cssH);
+
+      if (offscreen) {
+        ctx.imageSmoothingEnabled = (cam.zoom < 2);
+        ctx.drawImage(offscreen, cam.panX, cam.panY, cam.zoom * tw, cam.zoom * th);
+      } else if (offscreenBuilding) {
+        ctx.fillStyle = "rgba(255,255,255,0.72)";
+        ctx.font = "600 16px var(--sans)";
+        ctx.textAlign = "center";
+        ctx.fillText("Building tree canvas…", cssW / 2, cssH / 2);
+      }
+
+      if (showSize() && sizeArr && cam.zoom >= 3) {
+        const vx0 = Math.max(0, Math.floor(-cam.panX / cam.zoom));
+        const vy0 = Math.max(0, Math.floor(-cam.panY / cam.zoom));
+        const vx1 = Math.min(tw - 1, Math.ceil((cssW - cam.panX) / cam.zoom));
+        const vy1 = Math.min(th - 1, Math.ceil((cssH - cam.panY) / cam.zoom));
+
+        for (let vy = vy0; vy <= vy1; vy++) {
+          for (let vx = vx0; vx <= vx1; vx++) {
+            const idx = treeVertexIndex(vx, vy, tw, th);
+            const t   = typeArr ? Number(typeArr[idx] ?? 0) : 0;
+            const sz  = Number(sizeArr[idx] ?? 0);
+            if (sz === 0 && t === 0) continue;
+
+            const sx = cam.panX + vx * cam.zoom + cam.zoom * 0.5;
+            const sy = cam.panY + vy * cam.zoom + cam.zoom * 0.5;
+            const maxR = cam.zoom * 0.44;
+            const frac = sz <= 0 ? 0.22
+                       : sz === 1 ? 0.38
+                       : sz === 2 ? 0.54
+                       : sz === 3 ? 0.68
+                       : 0.78;
+            const r = maxR * frac;
+            if (r < 0.6) continue;
+
+            const col = t !== 0 ? getColor(t) : null;
+            const fill = col
+              ? `hsl(${col.h},${col.s}%,${Math.min(col.l + 16, 76)}%)`
+              : "rgba(190,210,190,0.45)";
+
+            ctx.beginPath();
+            ctx.arc(sx, sy, r, 0, Math.PI * 2);
+            ctx.fillStyle = fill;
+            ctx.fill();
+
+            if (cam.zoom >= 10 && r > 2.5) {
+              ctx.beginPath();
+              ctx.arc(sx, sy, Math.max(0.8, r * 0.2), 0, Math.PI * 2);
+              ctx.fillStyle = col
+                ? `hsl(${col.h},${Math.max(0, col.s - 10)}%,${Math.max(0, col.l - 18)}%)`
+                : "#334";
+              ctx.fill();
+            }
+          }
+        }
+      }
+
+      if (showGrid() && cam.zoom >= 5) {
+        const vx0 = Math.max(0, Math.floor(-cam.panX / cam.zoom));
+        const vy0 = Math.max(0, Math.floor(-cam.panY / cam.zoom));
+        const vx1 = Math.min(tw, Math.ceil((cssW - cam.panX) / cam.zoom));
+        const vy1 = Math.min(th, Math.ceil((cssH - cam.panY) / cam.zoom));
+        const alpha = Math.min(0.28, (cam.zoom - 5) / 18);
+        ctx.strokeStyle = `rgba(255,255,255,${alpha.toFixed(3)})`;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        for (let vx = vx0; vx <= vx1; vx++) {
+          const sx = cam.panX + vx * cam.zoom;
+          ctx.moveTo(sx, cam.panY + vy0 * cam.zoom);
+          ctx.lineTo(sx, cam.panY + vy1 * cam.zoom);
+        }
+        for (let vy = vy0; vy <= vy1; vy++) {
+          const sy = cam.panY + vy * cam.zoom;
+          ctx.moveTo(cam.panX + vx0 * cam.zoom, sy);
+          ctx.lineTo(cam.panX + vx1 * cam.zoom, sy);
+        }
+        ctx.stroke();
+      }
+
+      if (hoveredCell) {
+        const { cx, cy } = hoveredCell;
+        const sx = cam.panX + cx * cam.zoom;
+        const sy = cam.panY + cy * cam.zoom;
+        const lw = Math.max(1, Math.min(cam.zoom * 0.1, 2.5));
+        ctx.strokeStyle = "rgba(124,196,255,0.85)";
+        ctx.lineWidth = lw;
+        ctx.strokeRect(sx + lw * 0.5, sy + lw * 0.5, cam.zoom - lw, cam.zoom - lw);
+      }
+
+      ctx.restore();
+
+      const lbl = document.getElementById("treeZoomLabel");
+      if (lbl) {
+        lbl.textContent = cam.zoom < 1
+          ? `1:${Math.round(1 / cam.zoom)}`
+          : `${cam.zoom.toFixed(cam.zoom < 10 ? 1 : 0)} px`;
+      }
+    }
+
+    let isDragging = false;
+    let dragStart  = { x: 0, y: 0, panX: 0, panY: 0 };
+    let hoveredCell = null;
+
+    function screenToCell(clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      const sx   = clientX - rect.left;
+      const sy   = clientY - rect.top;
+      const cx   = Math.floor((sx - cam.panX) / cam.zoom);
+      const cy   = Math.floor((sy - cam.panY) / cam.zoom);
+      return (cx >= 0 && cy >= 0 && cx < tw && cy < th) ? { cx, cy } : null;
+    }
+
+    function updateTooltip(e) {
+      const tooltip = document.getElementById("treeTooltip");
+      if (!tooltip) return;
+      const cell = screenToCell(e.clientX, e.clientY);
+      hoveredCell = cell;
+      if (!cell) { tooltip.style.display = "none"; return; }
+
+      const { cx, cy } = cell;
+      const idx = treeVertexIndex(cx, cy, tw, th);
+      const t   = typeArr ? Number(typeArr[idx] ?? 0) : null;
+      const sz  = sizeArr ? Number(sizeArr[idx] ?? 0) : null;
+      const col = (t !== null && t !== 0) ? getColor(t) : null;
+
+      let html = `<span style="color:var(--muted)">vertex</span> (${cx}, ${cy})  <span style="color:var(--muted)">idx</span> ${idx}`;
+      if (t !== null) {
+        const swatch = col
+          ? `<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${col.css};vertical-align:middle;margin-right:3px;"></span>`
+          : "";
+        html += `<br/>${swatch}<span style="color:var(--muted)">type</span> ${t}${t === 0 ? "  <span style='color:var(--muted)'>(empty)</span>" : ""}`;
+      }
+      if (sz !== null) html += `<br/><span style="color:var(--muted)">size</span> ${sz}`;
+
+      tooltip.innerHTML = html;
+
+      const rect = canvas.getBoundingClientRect();
+      let tx = e.clientX - rect.left + 14;
+      let ty = e.clientY - rect.top  + 14;
+      const TW = 180, TH = 72;
+      if (tx + TW > rect.width)  tx = e.clientX - rect.left - TW - 10;
+      if (ty + TH > rect.height) ty = e.clientY - rect.top  - TH - 10;
+      tooltip.style.left    = tx + "px";
+      tooltip.style.top     = ty + "px";
+      tooltip.style.display = "block";
+    }
+
+    canvas.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const rect   = canvas.getBoundingClientRect();
+      const mx     = e.clientX - rect.left;
+      const my     = e.clientY - rect.top;
+      const factor = e.deltaY < 0 ? 1.16 : 1 / 1.16;
+      const nz     = Math.max(0.25, Math.min(80, cam.zoom * factor));
+      cam.panX     = mx - (mx - cam.panX) * (nz / cam.zoom);
+      cam.panY     = my - (my - cam.panY) * (nz / cam.zoom);
+      cam.zoom     = nz;
+      clampPan();
+      draw();
+    }, { passive: false });
+
+    let activePointerButton = null;
+
+    canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+    canvas.addEventListener("pointerdown", (e) => {
+      activePointerButton = e.button;
+      const shouldPan = e.button === 1 || (e.button === 0 && e.altKey);
+      if (shouldPan) {
+        isDragging = true;
+        dragStart  = { x: e.clientX, y: e.clientY, panX: cam.panX, panY: cam.panY };
+        canvas.setPointerCapture(e.pointerId);
+        canvas.style.cursor = "grabbing";
+      } else {
+        isDragging = false;
+        updateTooltip(e);
+      }
+    });
+
+    canvas.addEventListener("pointermove", (e) => {
+      if (isDragging) {
+        cam.panX = dragStart.panX + (e.clientX - dragStart.x);
+        cam.panY = dragStart.panY + (e.clientY - dragStart.y);
+        clampPan();
+        draw();
+      } else {
+        updateTooltip(e);
+        draw();
+      }
+    });
+
+    canvas.addEventListener("pointerup", (e) => {
+      const moved = isDragging ? Math.hypot(e.clientX - dragStart.x, e.clientY - dragStart.y) : 0;
+      const wasDragging = isDragging;
+      isDragging  = false;
+      canvas.style.cursor = "crosshair";
+
+      if (wasDragging && moved >= 5) {
+        activePointerButton = null;
+        return;
+      }
+
+      const cell = screenToCell(e.clientX, e.clientY);
+      if (cell) {
+        hoveredCell = cell;
+        if (e.altKey) {
+          const xEl = document.getElementById("gridX");
+          const yEl = document.getElementById("gridY");
+          if (xEl) xEl.value = Math.max(0, Math.min(gridW - 1, Math.floor(cell.cx / treeN)));
+          if (yEl) yEl.value = Math.max(0, Math.min(gridH - 1, Math.floor(cell.cy / treeN)));
+          document.getElementById("previewGridCellBtn")?.click();
+          canvas.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        } else if (activePointerButton === 0) {
+          paintVertexAt(cell.cx, cell.cy, "paint");
+          hoveredCell = cell;
+          draw();
+        } else if (activePointerButton === 2) {
+          paintVertexAt(cell.cx, cell.cy, "erase");
+          hoveredCell = cell;
+          draw();
+        }
+      }
+      activePointerButton = null;
+    });
+
+    canvas.addEventListener("pointerleave", () => {
+      hoveredCell = null;
+      const tooltip = document.getElementById("treeTooltip");
+      if (tooltip) tooltip.style.display = "none";
+      draw();
+    });
+
+    function zoomAround(factor) {
+      const cssW = canvas.width / dpr;
+      const cssH = canvas.height / dpr;
+      const mx = cssW / 2, my = cssH / 2;
+      const nz = Math.max(0.25, Math.min(80, cam.zoom * factor));
+      cam.panX = mx - (mx - cam.panX) * (nz / cam.zoom);
+      cam.panY = my - (my - cam.panY) * (nz / cam.zoom);
+      cam.zoom = nz;
+      clampPan();
+      draw();
+    }
+
+    document.getElementById("treeBtnFit")?.addEventListener("click", () => { fitToCanvas(); draw(); });
+    document.getElementById("treeBtnZoomIn")?.addEventListener("click",  () => zoomAround(1.6));
+    document.getElementById("treeBtnZoomOut")?.addEventListener("click", () => zoomAround(1 / 1.6));
+    document.getElementById("treeBtnReset")?.addEventListener("click", () => {
+      cam.zoom = 1; cam.panX = 0; cam.panY = 0; draw();
+    });
+    document.getElementById("treeBtnExport")?.addEventListener("click", () => {
+      const link      = document.createElement("a");
+      link.download   = `tree_vertices_${tw}x${th}.png`;
+      link.href       = canvas.toDataURL("image/png");
+      link.click();
+    });
+
+    [layerTypeEl, layerSizeEl, layerGridEl, layerEmptyEl].forEach((el) => {
+      el?.addEventListener("change", () => {
+        if (el === layerTypeEl || el === layerEmptyEl) scheduleOffscreenRebuild();
+        draw();
+      });
+    });
+
+    const ro = new ResizeObserver(() => {
+      fitToCanvas();
+      draw();
+    });
+    ro.observe(canvas.parentElement);
+
+    requestAnimationFrame(() => {
+      normalizeTreeVertexOrientationOnce();
+      scheduleOffscreenRebuild();
+      fitToCanvas();
+      draw();
+    });
+
+    let disposed = false;
+    const cleanup = () => {
+      if (disposed) return;
+      disposed = true;
+      try { ro.disconnect(); } catch {}
+      offscreenBuildId += 1;
+      offscreenPending = null;
+      if (_treeCanvasRedraw) _treeCanvasRedraw = null;
+    };
+
+    _treeCanvasRedraw = () => {
+      if (disposed) return;
+      normalizeTreeVertexOrientationOnce();
+      scheduleOffscreenRebuild();
+      draw();
+    };
+
+    return cleanup;
+  }
+
+  function parseCellInput(kind, text, currentValue) {
+    const t = String(text).trim();
+    if (currentValue instanceof Uint8Array) return hexToBytes(t);
+    if (typeof currentValue === "boolean") return /^true|1|yes|on$/i.test(t);
+    if (typeof currentValue === "bigint") return BigInt(t);
+    if (typeof currentValue === "number") {
+      if (kind === "FloatArray" || kind === "Float") return Number(t);
+      return Number.parseInt(t, 10);
+    }
+    if (typeof currentValue === "string") return t;
+    return t;
+  }
+
+  function renderAttrRow(elementIndex, attrIndex, attr, cellCount, isGrid) {
+    const value = attr.value;
+    const valueKind = value.kind;
+    const valuePreview = readableValue(value);
+    const hugeArray = Array.isArray(value.value) && value.value.length > 32;
+    const canEdit = true;
+    const editorId = `attr-${elementIndex}-${attrIndex}`;
+
+    let editorHtml = "";
+    if (valueKind === "Bool") {
+      editorHtml = `<input data-editor="${editorId}" type="checkbox" ${value.value ? "checked" : ""} />`;
+    } else if (valueKind === "Uint64") {
+      editorHtml = `<input data-editor="${editorId}" type="text" value="${escapeHtml(value.value.toString())}" />`;
+    } else if (valueKind === "Binary") {
+      editorHtml = `<details data-id="${editorId}-bin">
+        <summary>Binary (${value.value.length} bytes) <span class="pill">edit</span></summary>
+        <div class="inner">
+          <textarea data-editor="${editorId}" spellcheck="false">${bytesToHex(value.value)}</textarea>
+        </div>
+      </details>`;
+    } else if (valueKind.endsWith("Array")) {
+      const preview = previewArray(value, 8);
+      editorHtml = `<details data-id="${editorId}-arr" data-lazy-array="1" data-array-kind="${escapeHtml(valueKind)}">
+        <summary>${escapeHtml(valueKind)} (${value.value.length}) <span class="pill">${hugeArray ? "expand" : "lazy"}</span></summary>
+        <div class="inner">
+          <div class="small" style="margin-bottom:8px;color:var(--muted);">Preview: <span class="mono">${escapeHtml(preview)}</span></div>
+          <div class="row-actions" style="margin:8px 0 10px;">
+            <button type="button" data-download-array="${editorId}" class="good">Download .json</button>
+            <button type="button" data-upload-array="${editorId}" class="primary">Upload .json</button>
+            <input type="file" accept=".json,.txt,application/json" data-array-file="${editorId}" class="hidden" />
+          </div>
+          <div class="small" data-array-file-status="${editorId}" style="margin-bottom:8px;color:var(--muted);">Large arrays are loaded on demand. Export and import work without opening the editor.</div>
+          <textarea data-editor="${editorId}" spellcheck="false" data-lazy-array-editor="1" placeholder="Open to load the JSON editor…"></textarea>
+        </div>
+      </details>`;
+    } else if (["Color", "Vector2", "Vector3", "Vector4", "Qangle", "Quaternion", "Vmatrix", "Time", "Int", "Float", "Uint8", "Element", "String"].includes(valueKind)) {
+      if (valueKind === "String") {
+        editorHtml = `<input data-editor="${editorId}" type="text" value="${escapeHtml(String(value.value ?? ""))}" />`;
+      } else if (valueKind === "Element") {
+        editorHtml = `<input data-editor="${editorId}" type="number" value="${Number(value.value)}" />`;
+      } else if (valueKind === "Time" || valueKind === "Int" || valueKind === "Uint8") {
+        editorHtml = `<input data-editor="${editorId}" type="number" value="${Number(value.value)}" />`;
+      } else if (valueKind === "Float") {
+        editorHtml = `<input data-editor="${editorId}" type="number" step="any" value="${Number(value.value)}" />`;
+      } else if (valueKind === "Color") {
+        editorHtml = `<input data-editor="${editorId}" type="text" value="${escapeHtml([value.value.r, value.value.g, value.value.b, value.value.a].join(", "))}" />`;
+      } else if (valueKind === "Vector2") {
+        editorHtml = `<input data-editor="${editorId}" type="text" value="${escapeHtml([value.value.x, value.value.y].join(", "))}" />`;
+      } else if (valueKind === "Vector3") {
+        editorHtml = `<input data-editor="${editorId}" type="text" value="${escapeHtml([value.value.x, value.value.y, value.value.z].join(", "))}" />`;
+      } else if (valueKind === "Vector4" || valueKind === "Quaternion") {
+        editorHtml = `<input data-editor="${editorId}" type="text" value="${escapeHtml([value.value.x, value.value.y, value.value.z, value.value.w].join(", "))}" />`;
+      } else if (valueKind === "Qangle") {
+        editorHtml = `<input data-editor="${editorId}" type="text" value="${escapeHtml([value.value.pitch, value.value.yaw, value.value.roll].join(", "))}" />`;
+      } else if (valueKind === "Vmatrix") {
+        editorHtml = `<textarea data-editor="${editorId}" spellcheck="false">${escapeHtml(JSON.stringify(value.value, null, 2))}</textarea>`;
+      }
+    } else {
+      editorHtml = `<textarea data-editor="${editorId}" spellcheck="false">${escapeHtml(JSON.stringify(value.value, null, 2))}</textarea>`;
+    }
+
+    const actions = `
+      <div class="row-actions">
+        <button data-save="${editorId}" class="primary">Save</button>
+        <button data-delete="${editorId}" class="danger">Delete</button>
+      </div>
+    `;
+
+    return `
+      <tr data-attr-row="${editorId}">
+        <td class="code">${escapeHtml(attr.name)}</td>
+        <td class="code">${escapeHtml(valueKind)}</td>
+        <td class="code">${editorHtml}</td>
+        <td>${actions}</td>
+      </tr>
+    `;
+  }
+
+  function formatArrayEditorValue(kind, arr) {
+    const safeJson = (value) => JSON.stringify(value, (_, v) => typeof v === "bigint" ? v.toString() : v, 2);
+    const values = Array.isArray(arr) ? arr : [];
+    switch (kind) {
+      case "BinaryArray":
+        return JSON.stringify(values.map((item) => bytesToHex(item)), null, 2);
+      case "Uint64Array":
+        return JSON.stringify(values.map((item) => typeof item === "bigint" ? item.toString() : String(item)), null, 2);
+      default:
+        return safeJson(values);
+    }
+  }
+
+  function downloadTextFile(filename, text) {
+    const blob = new Blob([text], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function safeArrayFileName(name, kind) {
+    const clean = String(name || "array").replace(/[^a-z0-9._-]+/gi, "_").replace(/^_+|_+$/g, "");
+    return `${clean || "array"}-${String(kind || "array").replace(/[^a-z0-9._-]+/gi, "_")}.json`;
+  }
+
+  function parseArrayPayload(kind, parsed) {
+    if (!Array.isArray(parsed)) {
+      throw new Error(`The uploaded file must contain a JSON array for ${kind}.`);
+    }
+    switch (kind) {
+      case "ElementArray":
+      case "IntArray":
+        return parsed.map((v) => Number.parseInt(v, 10));
+      case "FloatArray":
+        return parsed.map((v) => Number(v));
+      case "BoolArray":
+        return parsed.map((v) => !!v);
+      case "StringArray":
+        return parsed.map((v) => String(v));
+      case "BinaryArray":
+        return parsed.map((v) => typeof v === "string" ? hexToBytes(v) : new Uint8Array(v || []));
+      case "TimeArray":
+        return parsed.map((v) => Number.parseInt(v, 10));
+      case "ColorArray":
+        return parsed.map((v) => normalizeColor(v));
+      case "Vector2Array":
+        return parsed.map((v) => normalizeVec(v, 2));
+      case "Vector3Array":
+        return parsed.map((v) => normalizeVec(v, 3));
+      case "Vector4Array":
+      case "QuaternionArray":
+        return parsed.map((v) => normalizeVec(v, 4));
+      case "QangleArray":
+        return parsed.map((v) => normalizeQangle(v));
+      case "VmatrixArray":
+        return parsed.map((v) => Array.isArray(v) ? v.map(Number) : JSON.parse(String(v)));
+      case "Uint64Array":
+        return parsed.map((v) => BigInt(String(v)));
+      case "Uint8Array":
+        return parsed.map((v) => Number.parseInt(v, 10) & 0xff);
+      default:
+        throw new Error(`Unsupported array kind ${kind}`);
+    }
+  }
+
+  function hydrateLazyArrayEditors(root = els.details) {
+    if (!root) return;
+    root.querySelectorAll('details[data-lazy-array="1"]').forEach((detailsEl) => {
+      const load = () => {
+        const textarea = detailsEl.querySelector('textarea[data-lazy-array-editor="1"]');
+        if (!textarea || detailsEl.__lazyLoaded || !detailsEl.open) return;
+        const editorId = textarea.dataset.editor;
+        const match = editorId && editorId.match(/^attr-(\d+)-(\d+)$/);
+        if (!match || !state.file) return;
+        const elementIndex = Number(match[1]);
+        const attrIndex = Number(match[2]);
+        const attr = state.file.bodies[elementIndex]?.attrs?.[attrIndex];
+        if (!attr?.value) return;
+        textarea.value = formatArrayEditorValue(detailsEl.dataset.arrayKind || attr.value.kind, attr.value.value);
+        detailsEl.__lazyLoaded = true;
+      };
+      if (!detailsEl.__lazyBound) {
+        detailsEl.addEventListener('toggle', load);
+        detailsEl.__lazyBound = true;
+      }
+      load();
+    });
+  }
+
+  async function importArrayFromFile(elementIndex, attrIndex, fileObject) {
+    const attr = state.file?.bodies?.[elementIndex]?.attrs?.[attrIndex];
+    if (!attr?.value) throw new Error("Attribute is no longer available.");
+    const raw = await fileObject.text();
+    const parsed = JSON.parse(raw);
+    const updated = { ...attr.value, value: parseArrayPayload(attr.value.kind, parsed) };
+    commit(`Import ${attr.name}`, () => { attr.value = updated; });
+    const isGrid = state.file.headers[elementIndex]?.type === "CDmeDotaTileGrid";
+    const cellCount = isGrid ? getCellCount(state.file.bodies[elementIndex]) : 0;
+    patchAttrRow(elementIndex, attrIndex, attr, cellCount, isGrid);
+    refreshJsonViewIfOpen(elementIndex);
+    updateOverview();
+  }
+
+  function refreshJsonViewIfOpen(elementIndex = state.selectedIndex) {
+    const jsonDetails = document.getElementById("jsonDetails");
+    const jsonView = document.getElementById("jsonView");
+    if (!jsonDetails || !jsonView || !jsonDetails.open || !state.jsonViewLoaded) return;
+    if (!state.file || elementIndex < 0 || elementIndex >= state.file.headers.length) return;
+    jsonView.textContent = JSON.stringify(selectedJson(state.file, elementIndex), null, 2);
+  }
+
+  function bindAttrEditors(elementIndex, body) {
+    const file = state.file;
+    const hdr = file.headers[elementIndex];
+    const isGrid = hdr.type === "CDmeDotaTileGrid";
+    const cellCount = isGrid ? getCellCount(body) : 0;
+
+    body.attrs.forEach((attr, attrIndex) => {
+      const editorId = `attr-${elementIndex}-${attrIndex}`;
+      const saveBtn = document.querySelector(`[data-save="${editorId}"]`);
+      const deleteBtn = document.querySelector(`[data-delete="${editorId}"]`);
+      const editor = document.querySelector(`[data-editor="${editorId}"]`);
+      const downloadBtn = document.querySelector(`[data-download-array="${editorId}"]`);
+      const uploadBtn = document.querySelector(`[data-upload-array="${editorId}"]`);
+      const uploadInput = document.querySelector(`[data-array-file="${editorId}"]`);
+      const fileStatus = document.querySelector(`[data-array-file-status="${editorId}"]`);
+
+      if (!saveBtn || !deleteBtn || !editor) return;
+
+      if (downloadBtn && attr.value?.kind?.endsWith("Array")) {
+        downloadBtn.addEventListener("click", () => {
+          try {
+            downloadTextFile(safeArrayFileName(attr.name, attr.value.kind), formatArrayEditorValue(attr.value.kind, attr.value.value));
+            if (fileStatus) fileStatus.textContent = `Downloaded ${attr.value.kind} to a JSON file.`;
+          } catch (err) {
+            alert(err.message || String(err));
+          }
+        });
+      }
+
+      if (uploadBtn && uploadInput && attr.value?.kind?.endsWith("Array")) {
+        uploadBtn.addEventListener("click", () => uploadInput.click());
+        uploadInput.addEventListener("change", async () => {
+          const chosen = uploadInput.files && uploadInput.files[0];
+          uploadInput.value = "";
+          if (!chosen) return;
+          try {
+            await importArrayFromFile(elementIndex, attrIndex, chosen);
+            if (fileStatus) fileStatus.textContent = `Imported ${chosen.name} into ${attr.name}.`;
+          } catch (err) {
+            if (fileStatus) fileStatus.textContent = `Import failed: ${err.message || String(err)}`;
+            alert(err.message || String(err));
+          }
+        });
+      }
+
+      saveBtn.addEventListener("click", () => {
+        try {
+          const updated = parseEditorValue(attr.value.kind, editor, attr.value);
+          commit(`Save ${attr.name}`, () => { attr.value = updated; });
+          patchAttrRow(elementIndex, attrIndex, attr, cellCount, isGrid);
+          refreshJsonViewIfOpen(elementIndex);
+          updateOverview();
+        } catch (err) {
+          alert(err.message || String(err));
+        }
+      });
+
+      deleteBtn.addEventListener("click", () => {
+        if (!confirm(`Delete attribute "${attr.name}"?`)) return;
+        commit(`Delete attr "${attr.name}"`, () => { body.attrs.splice(attrIndex, 1); });
+        renderDetails();
+        updateOverview();
+      });
+    });
+  }
+
+  function parseEditorValue(kind, editor, current) {
+    if (kind === "Bool") {
+      return { ...current, value: editor.checked };
+    }
+    if (kind === "Uint64") {
+      return { ...current, value: BigInt(String(editor.value).trim() || "0") };
+    }
+    if (kind === "Binary") {
+      return { ...current, value: hexToBytes(editor.value) };
+    }
+    if (kind.endsWith("Array")) {
+      const raw = editor.value.trim();
+      const parsed = raw ? JSON.parse(raw) : [];
+      return { ...current, value: parseArrayPayload(kind, parsed) };
+    }
+    switch (kind) {
+      case "Element":
+      case "Int":
+      case "Time":
+      case "Uint8":
+        return { ...current, value: Number.parseInt(editor.value, 10) };
+      case "Float":
+        return { ...current, value: Number(editor.value) };
+      case "String":
+        return { ...current, value: String(editor.value) };
+      case "Color":
+        return { ...current, value: normalizeColor(editor.value) };
+      case "Vector2":
+        return { ...current, value: normalizeVec(editor.value, 2) };
+      case "Vector3":
+        return { ...current, value: normalizeVec(editor.value, 3) };
+      case "Vector4":
+      case "Quaternion":
+        return { ...current, value: normalizeVec(editor.value, 4) };
+      case "Qangle":
+        return { ...current, value: normalizeQangle(editor.value) };
+      case "Vmatrix":
+        return { ...current, value: normalizeMatrix(editor.value) };
+      default:
+        throw new Error(`Unsupported kind ${kind}`);
+    }
+  }
+
+  function normalizeColor(input) {
+    if (typeof input === "string") {
+      const parts = input.split(",").map((v) => Number(v.trim()));
+      if (parts.length !== 4) throw new Error("Color must have 4 comma-separated numbers.");
+      return { r: parts[0] | 0, g: parts[1] | 0, b: parts[2] | 0, a: parts[3] | 0 };
+    }
+    if (Array.isArray(input)) {
+      if (input.length !== 4) throw new Error("Color array length must be 4.");
+      return { r: Number(input[0]) | 0, g: Number(input[1]) | 0, b: Number(input[2]) | 0, a: Number(input[3]) | 0 };
+    }
+    if (input && typeof input === "object") {
+      return { r: Number(input.r) | 0, g: Number(input.g) | 0, b: Number(input.b) | 0, a: Number(input.a) | 0 };
+    }
+    throw new Error("Invalid color value.");
+  }
+
+  function normalizeVec(input, n) {
+    const arr = typeof input === "string"
+      ? input.split(",").map((v) => Number(v.trim()))
+      : Array.isArray(input) ? input : [input?.x, input?.y, input?.z, input?.w].slice(0, n);
+    if (arr.length !== n) throw new Error(`Expected ${n} comma-separated numbers.`);
+    const out = {};
+    const keys = ["x", "y", "z", "w"];
+    for (let i = 0; i < n; i += 1) out[keys[i]] = Number(arr[i]);
+    return out;
+  }
+
+  function normalizeQangle(input) {
+    const arr = typeof input === "string"
+      ? input.split(",").map((v) => Number(v.trim()))
+      : Array.isArray(input) ? input : [input?.pitch, input?.yaw, input?.roll];
+    if (arr.length !== 3) throw new Error("Qangle must have 3 comma-separated numbers.");
+    return { pitch: Number(arr[0]), yaw: Number(arr[1]), roll: Number(arr[2]) };
+  }
+
+  function normalizeMatrix(input) {
+    const arr = Array.isArray(input) ? input : JSON.parse(String(input));
+    if (arr.length !== 16) throw new Error("Vmatrix must contain 16 numbers.");
+    return arr.map(Number);
+  }
+
+  function tryAddAttribute() {
+    const file = state.file;
+    if (!file || state.selectedIndex < 0) return;
+    const body = file.bodies[state.selectedIndex];
+    const name = document.getElementById("newAttrName").value.trim();
+    const kind = document.getElementById("newAttrType").value;
+    const raw = document.getElementById("newAttrValue").value;
+    if (!name) {
+      alert("Enter an attribute name.");
+      return;
+    }
+    try {
+      const attr = buildNewAttribute(name, kind, raw);
+      commit(`Add attr "${name}"`, () => { body.attrs.push(attr); });
+      renderDetails();
+      updateOverview();
+    } catch (err) {
+      alert(err.message || String(err));
+    }
+  }
+
+  function buildNewAttribute(name, kind, raw) {
+    const typeCode = Object.entries(TYPE_NAMES).find(([, v]) => v === kind)?.[0];
+    if (!typeCode) throw new Error(`Unknown type: ${kind}`);
+    const code = Number(typeCode);
+
+    const attr = { name, nameRef: -1, value: null };
+    const t = String(raw).trim();
+
+    switch (kind) {
+      case "Element":
+      case "Int":
+      case "Time":
+      case "Uint8":
+        attr.value = { kind, value: Number.parseInt(t || "0", 10), typeCode: code };
+        break;
+      case "Float":
+        attr.value = { kind, value: Number(t || "0"), typeCode: code };
+        break;
+      case "Bool":
+        attr.value = { kind, value: /^true|1|yes|on$/i.test(t), typeCode: code };
+        break;
+      case "String":
+        attr.value = { kind, value: t, typeCode: code };
+        break;
+      case "Binary":
+        attr.value = { kind, value: hexToBytes(t), typeCode: code };
+        break;
+      case "Color":
+        attr.value = { kind, value: normalizeColor(t), typeCode: code };
+        break;
+      case "Vector2":
+        attr.value = { kind, value: normalizeVec(t, 2), typeCode: code };
+        break;
+      case "Vector3":
+        attr.value = { kind, value: normalizeVec(t, 3), typeCode: code };
+        break;
+      case "Vector4":
+      case "Quaternion":
+        attr.value = { kind, value: normalizeVec(t, 4), typeCode: code };
+        break;
+      case "Qangle":
+        attr.value = { kind, value: normalizeQangle(t), typeCode: code };
+        break;
+      case "Vmatrix":
+        attr.value = { kind, value: normalizeMatrix(t), typeCode: code };
+        break;
+      case "Uint64":
+        attr.value = { kind, value: BigInt(t || "0"), typeCode: code };
+        break;
+      case "ElementArray":
+      case "IntArray":
+        attr.value = { kind, value: JSON.parse(t || "[]").map((v) => Number.parseInt(v, 10)), typeCode: code };
+        break;
+      case "FloatArray":
+        attr.value = { kind, value: JSON.parse(t || "[]").map((v) => Number(v)), typeCode: code };
+        break;
+      case "BoolArray":
+        attr.value = { kind, value: JSON.parse(t || "[]").map((v) => !!v), typeCode: code };
+        break;
+      case "StringArray":
+        attr.value = { kind, value: JSON.parse(t || "[]").map((v) => String(v)), typeCode: code };
+        break;
+      case "BinaryArray":
+        attr.value = { kind, value: JSON.parse(t || "[]").map((v) => typeof v === "string" ? hexToBytes(v) : new Uint8Array(v || [])), typeCode: code };
+        break;
+      case "TimeArray":
+        attr.value = { kind, value: JSON.parse(t || "[]").map((v) => Number.parseInt(v, 10)), typeCode: code };
+        break;
+      case "ColorArray":
+        attr.value = { kind, value: JSON.parse(t || "[]").map((v) => normalizeColor(v)), typeCode: code };
+        break;
+      case "Vector2Array":
+        attr.value = { kind, value: JSON.parse(t || "[]").map((v) => normalizeVec(v, 2)), typeCode: code };
+        break;
+      case "Vector3Array":
+        attr.value = { kind, value: JSON.parse(t || "[]").map((v) => normalizeVec(v, 3)), typeCode: code };
+        break;
+      case "Vector4Array":
+      case "QuaternionArray":
+        attr.value = { kind, value: JSON.parse(t || "[]").map((v) => normalizeVec(v, 4)), typeCode: code };
+        break;
+      case "QangleArray":
+        attr.value = { kind, value: JSON.parse(t || "[]").map((v) => normalizeQangle(v)), typeCode: code };
+        break;
+      case "VmatrixArray":
+        attr.value = { kind, value: JSON.parse(t || "[]").map((v) => normalizeMatrix(v)), typeCode: code };
+        break;
+      case "Uint64Array":
+        attr.value = { kind, value: JSON.parse(t || "[]").map((v) => BigInt(String(v))), typeCode: code };
+        break;
+      case "Uint8Array":
+        attr.value = { kind, value: JSON.parse(t || "[]").map((v) => Number.parseInt(v, 10) & 0xff), typeCode: code };
+        break;
+      default:
+        throw new Error(`Unsupported kind ${kind}`);
+    }
+    return attr;
+  }
+
+  async function handleLoad() {
+    const file = els.fileInput.files?.[0];
+    if (!file) {
+      alert("Choose a .vmap file first.");
+      return;
+    }
+    const loadToken = ++state.loadToken;
+    setLoadingUI(true, "Loading VMAP…", "Reading file into memory.");
+    try {
+      const buffer = await file.arrayBuffer();
+      if (state.loadToken !== loadToken) return;
+      setLoadingUI(true, "Parsing VMAP…", "Decoding the Source 2 DMX structure in a background worker.");
+      const parsed = await parseVmapInWorker(buffer, loadToken);
+      if (state.loadToken !== loadToken) return;
+      state.file = parsed;
+      state.fileName = file.name.replace(/\.(vmap|dmx|bin|txt)$/i, "_edited.vmap");
+      state.selectedIndex = getGridIndices(parsed)[0] ?? 0;
+      clearHistory();
+      updateStatus(`Loaded ${file.name}. Parsed ${parsed.headers.length} elements and ${parsed.strings.length} string-table entries.`);
+      updateOverview();
+      renderDetails();
+    } catch (err) {
+      if (state.loadToken !== loadToken) return;
+      state.file = null;
+      state.selectedIndex = -1;
+      updateOverview();
+      els.details.innerHTML = `
+        <div class="card">
+          <h3>Parse failed</h3>
+          <div class="error">${escapeHtml(err.stack || err.message || String(err))}</div>
+          <div class="footer-note">
+            This tool expects a binary VMAP (DMX v9) file. Text DMX is not needed here.
+          </div>
+        </div>
+      `;
+      updateStatus(`Load failed: ${err.message || String(err)}`);
+    } finally {
+      if (state.loadToken === loadToken) {
+        setLoadingUI(false);
+      }
+    }
+  }
+
+  function updateStatus(message) {
+    els.status.textContent = message;
+  }
+
+  function downloadFile() {
+    if (!state.file) return;
+    try {
+      const out = serializeVmap(state.file);
+      const blob = new Blob([out], { type: "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = state.fileName || "edited.vmap";
+      const downloadName = a.download;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      updateStatus(`Wrote ${out.length.toLocaleString()} bytes to ${downloadName}.`);
+    } catch (err) {
+      alert(err.message || String(err));
+    }
+  }
+
+  async function copyJson() {
+    if (!state.file || state.selectedIndex < 0) return;
+    const json = JSON.stringify(selectedJson(state.file, state.selectedIndex), null, 2);
+    await navigator.clipboard.writeText(json);
+    updateStatus("Copied selected element JSON to clipboard.");
+  }
+
+  function refresh() {
+    if (!state.file) return;
+    updateOverview();
+    renderDetails();
+  }
+
+  els.loadBtn.addEventListener("click", handleLoad);
+  els.downloadBtn.addEventListener("click", downloadFile);
+  els.copyJsonBtn.addEventListener("click", copyJson);
+  els.refreshBtn.addEventListener("click", refresh);
+  els.undoBtn.addEventListener("click", undo);
+  els.redoBtn.addEventListener("click", redo);
+  window.addEventListener("beforeunload", () => terminateLoadWorker());
+  els.searchInput.addEventListener("input", () => {
+    state.search = els.searchInput.value;
+    updateOverview();
+  });
+  els.elementFilter.addEventListener("change", () => {
+    state.filter = els.elementFilter.value;
+    updateOverview();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    const tag = document.activeElement?.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+    if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+    if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.key === "z" && e.shiftKey))) { e.preventDefault(); redo(); }
+  });
+
+  updateOverview();
+})();
+</script>
+</body>
+</html>
